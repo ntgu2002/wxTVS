@@ -9,7 +9,7 @@ map = [
     '------1111111111-',  # 4
     '-----11111111111-',  # 5
     '----111111111111-',  # 6
-    '---1111111111111-',  # 7
+    '---1111112111111-',  # 7
     '--11111111111111-',  # 8
     '--1111132311111--',  # 9
     '-11111111111111--',  # 10
@@ -63,7 +63,6 @@ class SelectObject(object):
         dCol = self.SelectedTVS[1]
         map[dRow] = map[dRow][:dCol] + '2' + map[dRow][(dCol + 1):]
 
-
 class paintTVS(object):
     def __init__(self, radius):
         TVS_r = radius
@@ -73,7 +72,6 @@ class paintTVS(object):
         dy = TVS_R
         self.pointsTVS = [[0 for i in range(40)] for j in range(40)]
         # AZ map
-
 
         dRow = 0
         for row in map:
@@ -92,6 +90,7 @@ class paintTVS(object):
         return self.pointsTVS
 
     def Render(self, gc):
+        #dc.Clear()
         path = [[0 for i in range(40)] for j in range(40)]
         dRow = 0
         for row in map:
@@ -100,12 +99,15 @@ class paintTVS(object):
                 if col == '1':
                     gc.SetPen(wx.Pen("navy", 1))
                     gc.SetBrush(wx.Brush("pink"))
+                    #gc.DrawPolygon(self.pointsTVS[dRow][dCol])
                 elif col == '2':
                     gc.SetPen(wx.Pen("navy", 1))
                     gc.SetBrush(wx.Brush("green"))
+                    #gc.DrawPolygon(self.pointsTVS[dRow][dCol])
                 elif col == '3':
                     gc.SetPen(wx.Pen("navy", 1))
                     gc.SetBrush(wx.Brush("pink"))
+                    #gc.DrawPolygon(self.pointsTVS[dRow][dCol])
                 else:
                     gc.SetPen(wx.Pen("navy", 1, wx.PENSTYLE_TRANSPARENT))
                     gc.SetBrush(wx.Brush(wx.Colour(255, 255, 255, 0)))
@@ -116,41 +118,51 @@ class paintTVS(object):
                 gc.DrawPath(path[dRow][dCol])
                 dCol += 1
             dRow += 1
-        print('Render TEST')
 
 class clAZonePanel(wx.Panel):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
         self.SetBackgroundColour("WHITE")
+        # Events by Paint, LeftMouseClick, ..
         self.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.Bind(wx.EVT_LEFT_DOWN, self.OnButtonClick)
 
-    def OnPaint(self, event):
-        # Create paint DC
-        self.dc = wx.PaintDC(self)
-        # Create graphics context from it
-        self.gc = wx.GraphicsContext.Create(self.dc)
-        if self.gc:
-            paintTVS(TVS_SIZE).Render(self.gc)
-            self.Bind(wx.EVT_LEFT_DOWN, self.OnButtonClicked)
+    def InitBuffer(self):
+        # Create Buffer Bitmap
+        w, h = self.GetClientSize()
+        self.Buffer = wx.Bitmap(w, h)
+        # Create BufferedDC
+        dc = wx.BufferedDC(wx.ClientDC(self), self.Buffer)
+        dc.Clear()
+        # Create GraphicsContext
+        gc = wx.GraphicsContext.Create(dc)
+        # Painting in GraphicsContext
+        paintTVS(TVS_SIZE).Render(gc)
 
-    def OnButtonClicked(self, evt):
+    def OnPaint(self, evt):
+        # Painting through Buffer
+        self.InitBuffer()
+
+    def OnButtonClick(self, evt):
+        # Define Click position
         clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
         print('TVS number:', SelectObject(clickXY).TVS_pos(), 'was selected')
+        # Define clicked TVS
         SelectObject(clickXY).TVS_change_pos()
-        self.dc.Clear()
-        paintTVS(TVS_SIZE).Render(self.gc)
-        print(map[1])
+        # Painting through Buffer
+        self.InitBuffer()
+
 
 class MainFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1290, 1010))
 
-        ControlPanel = clControlPanel(self, -1, style=wx.SUNKEN_BORDER)
-        AZonePanel = clAZonePanel(self, -1, style=wx.SUNKEN_BORDER)
+        ControlPanel = clControlPanel(self, -1, size=(240, 1010), style=wx.SUNKEN_BORDER)
+        AZonePanel = clAZonePanel(self, -1, size=(1050, 1010), style=wx.SUNKEN_BORDER)
 
         sizerFrame = wx.BoxSizer(wx.HORIZONTAL)
-        sizerFrame.Add(ControlPanel, 1, wx.EXPAND)
-        sizerFrame.Add(AZonePanel, 4, wx.EXPAND)
+        sizerFrame.Add(ControlPanel, 0, wx.EXPAND)
+        sizerFrame.Add(AZonePanel, 1, wx.EXPAND)
 
         self.SetAutoLayout(True)
         self.SetSizer(sizerFrame)
