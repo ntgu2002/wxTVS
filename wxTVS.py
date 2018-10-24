@@ -2,6 +2,25 @@ import wx
 import math
 
 TVS_SIZE = 32
+map = [
+    '-----------------',  # 1
+    '---------111111--',  # 2
+    '-------111111111-',  # 3
+    '------1111111111-',  # 4
+    '-----11111111111-',  # 5
+    '----111111111111-',  # 6
+    '---1111111111111-',  # 7
+    '--11111111111111-',  # 8
+    '--1111132311111--',  # 9
+    '-11111111111111--',  # 10
+    '-1111111111111---',  # 11
+    '-111111111111----',  # 12
+    '-11111111111-----',  # 13
+    '-1111111111------',  # 14
+    '-111111111-------',  # 15
+    '--111111---------',  # 16
+    '-----------------'  # 17
+]
 
 class clControlPanel(wx.Panel):
     def __init__(self, *args, **kwargs):
@@ -13,44 +32,91 @@ class clControlPanel(wx.Panel):
         self.SetSizer(sizer)
 
 class SelectObject(object):
-    def __init__(self, clickX, clickY):
-        self.select = True
+    def __init__(self, clickXY):
+        clickX = clickXY[0]
+        clickY = clickXY[1]
         cL = [0 for i in range(6)]
         points = paintTVS(TVS_SIZE).Points()
-        for i in range(6):
-            if i == 5:
-                cL[i] = (points[i][0]-clickX)*(points[0][1]-points[i][1])-(points[0][0]-points[i][0])*(points[i][1]-clickY)
-            else:
-                cL[i] = (points[i][0]-clickX)*(points[i+1][1]-points[i][1])-(points[i+1][0]-points[i][0])*(points[i][1]-clickY)
-        if cL[0] and cL[1] and cL[2] and cL[3] and cL[4] and cL[5] < 0:
-            print('INSIDE!')
-        else:
-            print('out')
 
-#    def FindTVS(self, clickX, clickY):
-#        print('Click Event!!!', clickX, clickY)
+        dRow = 0
+        for row in map:
+            dCol = 0
+            for col in row:
+                for i in range(6):
+                    if i == 5:
+                        cL[i] = (points[dRow][dCol][i][0]-clickX)*(points[dRow][dCol][0][1]-points[dRow][dCol][i][1])-\
+                                (points[dRow][dCol][0][0]-points[dRow][dCol][i][0])*(points[dRow][dCol][i][1]-clickY)
+                    else:
+                        cL[i] = (points[dRow][dCol][i][0]-clickX)*(points[dRow][dCol][i+1][1]-points[dRow][dCol][i][1])-\
+                                (points[dRow][dCol][i+1][0]-points[dRow][dCol][i][0])*(points[dRow][dCol][i][1]-clickY)
+                if cL[0] < 0 and cL[1] < 0 and cL[2] < 0 and cL[3] < 0 and cL[4] < 0 and cL[5] < 0:
+                    self.SelectedTVS = [dRow, dCol]
+                    #print('TVS number:', self.SelectedTVS, 'was selected')
+                dCol += 1
+            dRow += 1
+
+    def TVS_pos(self):
+        return self.SelectedTVS
+
+    def TVS_change_pos(self):
+        dRow = self.SelectedTVS[0]
+        dCol = self.SelectedTVS[1]
+        map[dRow] = map[dRow][:dCol] + '2' + map[dRow][(dCol + 1):]
+
 
 class paintTVS(object):
     def __init__(self, radius):
         TVS_r = radius
         TVS_R = 2 * TVS_r / math.sqrt(3)
-        dx = TVS_R
+        offset = 8 * TVS_r
+        dx = 0 - offset
         dy = TVS_R
-        self.points = [(dx + TVS_r, dy + TVS_R / 2), (dx + TVS_r, dy - TVS_R / 2), (dx + 0, dy - TVS_R),
-                       (dx - TVS_r, dy - TVS_R / 2), (dx - TVS_r, dy + TVS_R / 2), (dx + 0, dy + TVS_R)]
+        self.pointsTVS = [[0 for i in range(40)] for j in range(40)]
+        # AZ map
+
+
+        dRow = 0
+        for row in map:
+            dCol = 0
+            for col in row:
+                self.pointsTVS[dRow][dCol] = [(dx + TVS_r, dy + TVS_R / 2), (dx + TVS_r, dy - TVS_R / 2), (dx + 0, dy - TVS_R),
+                                              (dx - TVS_r, dy - TVS_R / 2), (dx - TVS_r, dy + TVS_R / 2), (dx + 0, dy + TVS_R)]
+                dx += TVS_r * 2
+                dCol += 1
+            dRow += 1
+            dy += TVS_R * 2 - TVS_R / 2
+            dx = TVS_r * dRow - offset
+
 
     def Points(self):
-        return self.points
+        return self.pointsTVS
 
     def Render(self, gc):
-        gc.SetPen(wx.Pen("navy", 1))
-        gc.SetBrush(wx.Brush("pink"))
-        path = gc.CreatePath()
-        for i in range(6):
-            path.AddLineToPoint(self.points[i])
-        path.CloseSubpath()
-        gc.DrawPath(path)
-
+        path = [[0 for i in range(40)] for j in range(40)]
+        dRow = 0
+        for row in map:
+            dCol = 0
+            for col in row:
+                if col == '1':
+                    gc.SetPen(wx.Pen("navy", 1))
+                    gc.SetBrush(wx.Brush("pink"))
+                elif col == '2':
+                    gc.SetPen(wx.Pen("navy", 1))
+                    gc.SetBrush(wx.Brush("green"))
+                elif col == '3':
+                    gc.SetPen(wx.Pen("navy", 1))
+                    gc.SetBrush(wx.Brush("pink"))
+                else:
+                    gc.SetPen(wx.Pen("navy", 1, wx.PENSTYLE_TRANSPARENT))
+                    gc.SetBrush(wx.Brush(wx.Colour(255, 255, 255, 0)))
+                path[dRow][dCol] = gc.CreatePath()
+                for i in range(6):
+                    path[dRow][dCol].AddLineToPoint(self.pointsTVS[dRow][dCol][i])
+                path[dRow][dCol].CloseSubpath()
+                gc.DrawPath(path[dRow][dCol])
+                dCol += 1
+            dRow += 1
+        print('Render TEST')
 
 class clAZonePanel(wx.Panel):
     def __init__(self, *args, **kwargs):
@@ -60,23 +126,24 @@ class clAZonePanel(wx.Panel):
 
     def OnPaint(self, event):
         # Create paint DC
-        dc = wx.PaintDC(self)
+        self.dc = wx.PaintDC(self)
         # Create graphics context from it
-        gc = wx.GraphicsContext.Create(dc)
-        if gc:
-            paintTVS(TVS_SIZE).Render(gc)
+        self.gc = wx.GraphicsContext.Create(self.dc)
+        if self.gc:
+            paintTVS(TVS_SIZE).Render(self.gc)
             self.Bind(wx.EVT_LEFT_DOWN, self.OnButtonClicked)
 
     def OnButtonClicked(self, evt):
-        clickX = evt.GetPosition()[0]
-        clickY = evt.GetPosition()[1]
-        #print('Click Event!!!', clickX, clickY)
-        #evt.Skip()
-        SelectObject(clickX, clickY)
+        clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
+        print('TVS number:', SelectObject(clickXY).TVS_pos(), 'was selected')
+        SelectObject(clickXY).TVS_change_pos()
+        self.dc.Clear()
+        paintTVS(TVS_SIZE).Render(self.gc)
+        print(map[1])
 
 class MainFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1000, 800))
+        wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1290, 1010))
 
         ControlPanel = clControlPanel(self, -1, style=wx.SUNKEN_BORDER)
         AZonePanel = clAZonePanel(self, -1, style=wx.SUNKEN_BORDER)
