@@ -3,7 +3,7 @@ import math
 
 AZ_dimension = 17
 TVS_SIZE = 32
-map = [
+map_year = [
     '-----------------',  # 1
     '---------111111--',  # 2
     '-------111111111-',  # 3
@@ -22,13 +22,27 @@ map = [
     '--111111---------',  # 16
     '-----------------'  # 17
 ]
-#map = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
 
-#map[8][8] = ''
-
-#At = ['U49G6', 'U49Z4', 'U44Z4']
-#map_Atype = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-
+TVS_type = ['U49G6', 'U49Z4', 'U44Z4']
+map_type = [
+    '-----------------',  # 1
+    '---------111111--',  # 2
+    '-------111111111-',  # 3
+    '------1111111111-',  # 4
+    '-----11111111111-',  # 5
+    '----111111111111-',  # 6
+    '---1111111111111-',  # 7
+    '--11111111111111-',  # 8
+    '--1111111111111--',  # 9
+    '-11111111111111--',  # 10
+    '-1111111111111---',  # 11
+    '-111111111111----',  # 12
+    '-11111111111-----',  # 13
+    '-1111111111------',  # 14
+    '-111111111-------',  # 15
+    '--111111---------',  # 16
+    '-----------------'  # 17
+]
 
 class clControlPanel(wx.Panel):
     def __init__(self, *args, **kwargs):
@@ -50,15 +64,16 @@ class clControlPanel(wx.Panel):
         self.SetSizer(sizer_Main)
 
 class SelectObject(object):
-    def __init__(self, clickXY):
+    def __init__(self, btn, clickXY):
         self.SelectedTVS = [0, 0]
+        self.button = btn
         clickX = clickXY[0]
         clickY = clickXY[1]
         cL = [0 for i in range(6)]
         points = paintTVS(TVS_SIZE).Points()
 
         dRow = 0
-        for row in map:
+        for row in map_year:
             dCol = 0
             for col in row:
                 for i in range(6):
@@ -86,11 +101,10 @@ class SelectObject(object):
             for i in range(1, Cn-j):
                 k+=1
                 Sym[k] = [Cn+j, Cn-j-i], [Cn-j, Cn+j+i], [Cn-i, Cn-j], [Cn+i, Cn+j],  [Cn-j-i, Cn+i], [Cn+j+i, Cn-i]
-                #print(Sym[k])
         return Sym
 
 
-    def TVS_change_pos(self):
+    def TVS_change(self):
         dRow = self.SelectedTVS[0]
         dCol = self.SelectedTVS[1]
         TVS_index = [dRow, dCol]
@@ -98,18 +112,26 @@ class SelectObject(object):
 
         if self.SelectedTVS != [0, 0]:  # test if click on somewhere but no on TVS
             Sym = self.TVS_symetry()    # call TVS_symetry function
-            for i in range(len(Sym)):
-                #if (TVS_index in Sym[i]) or (dRow == Cn and dCol == Cn):
-                if TVS_index in Sym[i]:
-                    for SymIndex in Sym[i]:
+            for i in range(len(Sym)):   # walk by all Sym koeff list
+                if TVS_index in Sym[i]:         # looking up Symetry
+                    for SymIndex in Sym[i]:     # get indexes of all symetry TVS from list
                         dRow = SymIndex[0]
                         dCol = SymIndex[1]
-                        if map[dRow][dCol] == '1':
-                            map[dRow] = map[dRow][:dCol] + '2' + map[dRow][(dCol + 1):]
-                        elif map[dRow][dCol] == '2':
-                            map[dRow] = map[dRow][:dCol] + '3' + map[dRow][(dCol + 1):]
-                        elif map[dRow][dCol] == '3':
-                            map[dRow] = map[dRow][:dCol] + '1' + map[dRow][(dCol + 1):]
+                        if self.button == 'left':
+                            if map_year[dRow][dCol] == '1':
+                                map_year[dRow] = map_year[dRow][:dCol] + '2' + map_year[dRow][(dCol + 1):]
+                            elif map_year[dRow][dCol] == '2':
+                                map_year[dRow] = map_year[dRow][:dCol] + '3' + map_year[dRow][(dCol + 1):]
+                            elif map_year[dRow][dCol] == '3':
+                                map_year[dRow] = map_year[dRow][:dCol] + '1' + map_year[dRow][(dCol + 1):]
+                        elif self.button == 'right':
+                            if map_type[dRow][dCol] == '1':
+                                map_type[dRow] = map_type[dRow][:dCol] + '2' + map_type[dRow][(dCol + 1):]
+                            elif map_type[dRow][dCol] == '2':
+                                map_type[dRow] = map_type[dRow][:dCol] + '3' + map_type[dRow][(dCol + 1):]
+                            elif map_type[dRow][dCol] == '3':
+                                map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
+        self.button = ''
 
 class paintTVS(object):
     def __init__(self, radius):
@@ -122,16 +144,20 @@ class paintTVS(object):
         self.pointsTVS = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
         self.txtYearX = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
         self.txtYearY = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-        # AZ map
+        self.txtTypeX = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
+        self.txtTypeY = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
+        # AZ map_year
 
         dRow = 0
-        for row in map:
+        for row in map_year:
             dCol = 0
             for col in row:
                 self.pointsTVS[dRow][dCol] = [(dx + TVS_r, dy + TVS_R / 2), (dx + TVS_r, dy - TVS_R / 2), (dx + 0, dy - TVS_R),
                                               (dx - TVS_r, dy - TVS_R / 2), (dx - TVS_r, dy + TVS_R / 2), (dx + 0, dy + TVS_R)]
                 self.txtYearX[dRow][dCol] = dx - TVS_r + TVS_r/5
                 self.txtYearY[dRow][dCol] = dy - TVS_R/2 - TVS_R/15
+                self.txtTypeX[dRow][dCol] = dx - TVS_r + TVS_r/2.4
+                self.txtTypeY[dRow][dCol] = dy-5
                 dx += TVS_r * 2
                 dCol += 1
             dRow += 1
@@ -143,25 +169,25 @@ class paintTVS(object):
         return self.pointsTVS
 
     def Render(self, gc):
-
-        gc.SetFont(wx.Font(10, wx.DEFAULT, wx.NORMAL, wx.BOLD), "navy")
         path = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
+
+        # Change TVS year by color and text
         dRow = 0
-        for row in map:
+        for row in map_year:
             dCol = 0
             for col in row:
                 # Draw TVS
                 if col == '1':
-                    gc.SetPen(wx.Pen("navy", 1))
+                    gc.SetPen(wx.Pen('navy', 1))
                     gc.SetBrush(wx.Brush(wx.Colour(185, 225, 185)))
                 elif col == '2':
-                    gc.SetPen(wx.Pen("navy", 1))
+                    gc.SetPen(wx.Pen('navy', 1))
                     gc.SetBrush(wx.Brush(wx.Colour(225, 225, 120)))
                 elif col == '3':
-                    gc.SetPen(wx.Pen("navy", 1))
+                    gc.SetPen(wx.Pen('navy', 1))
                     gc.SetBrush(wx.Brush(wx.Colour(250, 180, 255)))
                 else:
-                    gc.SetPen(wx.Pen("navy", 1, wx.PENSTYLE_TRANSPARENT))
+                    gc.SetPen(wx.Pen('navy', 1, wx.PENSTYLE_TRANSPARENT))
                     gc.SetBrush(wx.Brush(wx.Colour(255, 255, 255, 0)))
 
                 path[dRow][dCol] = gc.CreatePath()
@@ -171,13 +197,31 @@ class paintTVS(object):
                 gc.DrawPath(path[dRow][dCol])
 
                 # Draw Text - Year
+                gc.SetFont(wx.Font(wx.FontInfo(9).Bold()), 'navy')
                 if col == '1':
-                    gc.DrawText(col, self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
+                    gc.DrawText('1', self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
                 elif col == '2':
-                    gc.DrawText(col, self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
+                    gc.DrawText('2', self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
                 elif col == '3':
-                    gc.DrawText(col, self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
+                    gc.DrawText('3', self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
 
+                dCol += 1
+            dRow += 1
+
+        # Change TVS type text
+        dRow = 0
+        for row in map_type:
+            dCol = 0
+            for col in row:
+                # Draw Text - Type
+                FontType = wx.Font(wx.FontInfo(10).Bold())
+                gc.SetFont(FontType, 'navy')
+                if col == '1':
+                    gc.DrawText(TVS_type[0], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                elif col == '2':
+                    gc.DrawText(TVS_type[1], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                elif col == '3':
+                    gc.DrawText(TVS_type[2], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
 
                 dCol += 1
             dRow += 1
@@ -185,10 +229,11 @@ class paintTVS(object):
 class clAZonePanel(wx.Panel):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
-        self.SetBackgroundColour("WHITE")
+        self.SetBackgroundColour('WHITE')
         # Events by Paint, LeftMouseClick, ..
         self.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.Bind(wx.EVT_LEFT_DOWN, self.OnButtonClick)
+        self.Bind(wx.EVT_LEFT_DOWN, self.OnClick_Lbtn)
+        self.Bind(wx.EVT_RIGHT_DOWN, self.OnClick_Rbtn)
 
     def InitBuffer(self):
         # Create Buffer Bitmap
@@ -206,12 +251,21 @@ class clAZonePanel(wx.Panel):
         # Painting through Buffer
         self.InitBuffer()
 
-    def OnButtonClick(self, evt):
+    def OnClick_Lbtn(self, evt):
         # Define Click position
         clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
-        print('TVS number:', SelectObject(clickXY).TVS_pos(), 'was selected')
+        print('TVS number:', SelectObject('left', clickXY).TVS_pos(), 'was selected')
         # Define clicked TVS
-        SelectObject(clickXY).TVS_change_pos()
+        SelectObject('left', clickXY).TVS_change()
+        # Painting through Buffer
+        self.InitBuffer()
+
+    def OnClick_Rbtn(self, evt):
+        # Define Click position
+        clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
+        print('TVS number:', SelectObject('right', clickXY).TVS_pos(), 'was selected')
+        # Define clicked TVS
+        SelectObject('right', clickXY).TVS_change()
         # Painting through Buffer
         self.InitBuffer()
 
