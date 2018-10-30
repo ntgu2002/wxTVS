@@ -1,5 +1,7 @@
 import wx
 import math
+#from wx.lib.pubsub import pub
+from pubsub import pub
 
 AZ_dimension = 17
 TVS_SIZE = 32
@@ -23,7 +25,8 @@ map_year = [
     '-----------------'  # 17
 ]
 
-TVS_type = ['U49G6', 'U49Z4', 'U44Z4']
+max_NumTVS = 5
+TVS_type = ['XXXXXX' for i in range(max_NumTVS)]
 map_type = [
     '-----------------',  # 1
     '---------111111--',  # 2
@@ -45,28 +48,122 @@ map_type = [
 ]
 
 class clControlPanel(wx.Panel):
-    def __init__(self, *args, **kwargs):
-        wx.Panel.__init__(self, *args, **kwargs)
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent=parent)
 
-        sizer_Main = wx.BoxSizer(wx.VERTICAL)
-        Label_AZ_modification = wx.StaticText(self, -1, "AZ modification", (0, 0), (240, 20), wx.ALIGN_CENTER)
-        sizer_Main.Add(Label_AZ_modification, 0, wx.ALL, 5)
+        self.sizer_Main = wx.BoxSizer(wx.VERTICAL)
 
-        sizer_TVS_type = wx.BoxSizer(wx.HORIZONTAL)
-        valList_TVS_type = ["Don't change", 'U49G6', 'U49Z4', 'U44Z4']
-        Label_TVS_type = wx.StaticText(self, -1, "Select one:")
-        List_TVS_type = wx.Choice(self, -1, (0, 0), (110, 25), choices = valList_TVS_type)
-        List_TVS_type.SetSelection(0)
-        sizer_TVS_type.Add(Label_TVS_type, 0, wx.ALL, 5)
-        sizer_TVS_type.Add(List_TVS_type, 0, wx.ALL, 5)
-        sizer_Main.Add(sizer_TVS_type, 0, wx.ALL, 5)
+        # 1-srt (Сaption Open/Save buttons)
+        self.Label_OpenSave = wx.StaticText(self, -1, "Open/Save AZ map:", (0, 0), (240, 20), wx.ALIGN_LEFT)
+        self.sizer_Main.Add(self.Label_OpenSave, 0, wx.LEFT | wx.RIGHT | wx.UP | wx.EXPAND, 5)
 
-        self.SetSizer(sizer_Main)
+        # 2-srt (Open/Save buttons)
+        self.Btn_Open = wx.Button(self, -1, "Open", (0, 0), (100, 27))
+        self.Btn_Save = wx.Button(self, -1, "Save", (0, 0), (100, 27))
+        self.Btn_Open.Bind(wx.EVT_BUTTON, self.Click_Btn_Open)
+        self.Btn_Save.Bind(wx.EVT_BUTTON, self.Click_Btn_Save)
+        self.sizer_OpenSaveBtn = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer_OpenSaveBtn.Add(self.Btn_Open, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 0)
+        self.sizer_OpenSaveBtn.Add(self.Btn_Save, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 0)
+        self.sizer_Main.Add(self.sizer_OpenSaveBtn, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+
+        # 3-srt (Empty)
+        self.sizer_Main.AddSpacer(20)
+
+        # 4-srt (Number of assemblies with SpinCtrl)
+        self.maxSpinCtrl_NumTVS = max_NumTVS
+        self.Label_NumTVS = wx.StaticText(self, -1, "Number of assemblies:", (0, 0), (140, 20), wx.ALIGN_LEFT)
+        self.SpinCtrl_NumTVS = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumTVS, initial=3)
+        self.SpinCtrl_NumTVS.Bind(wx.EVT_SPINCTRL, self.Click_SpinCtrl_NumTVS)
+        self.sizer_NumTVS = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer_NumTVS.Add(self.Label_NumTVS, 1, wx.ALL | wx.ALIGN_LEFT, 0)
+        self.sizer_NumTVS.Add(self.SpinCtrl_NumTVS, 1, wx.ALL | wx.EXPAND, 0)
+        self.sizer_Main.Add(self.sizer_NumTVS, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+
+        # 5-srt (Empty)
+        self.sizer_Main.AddSpacer(6)
+
+        # 6-srt TextCtrl with names of TVSs
+        #str_TVS_name = ['XXXXXXX' for i in range(self.maxSpinCtrl_NumTVS)]
+        TVS_type[0] = 'E495A18'
+        TVS_type[1] = 'E460A06'
+        TVS_type[2] = 'E445A22'
+        self.TextCtrl_TVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
+        self.Btn_EditTVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
+        self.sizer_TVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
+        self.TVSid = [0 for i in range(self.maxSpinCtrl_NumTVS)]
+
+        for i in range(self.maxSpinCtrl_NumTVS):
+            self.TVSid[i] = wx.NewId()
+            self.TextCtrl_TVS_name[i] = wx.TextCtrl(self, self.TVSid[i], TVS_type[i], (0, 0), (120, 20))
+            self.TextCtrl_TVS_name[i].Bind(wx.EVT_TEXT, self.OnKeyTyped_TVS_name)
+            self.Btn_EditTVS_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (100, 27))
+            self.sizer_TVS_name[i] = wx.BoxSizer(wx.HORIZONTAL)
+            self.sizer_TVS_name[i].Add(self.TextCtrl_TVS_name[i], 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
+            self.sizer_TVS_name[i].AddSpacer(20)
+            self.sizer_TVS_name[i].Add(self.Btn_EditTVS_name[i], 1, wx.ALL | wx.EXPAND, 0)
+            self.sizer_Main.Add(self.sizer_TVS_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+        # Hide extra TVSs
+        for i in range(self.SpinCtrl_NumTVS.GetValue(), self.maxSpinCtrl_NumTVS):
+            self.sizer_TVS_name[i].Hide(self.TextCtrl_TVS_name[i])
+            self.sizer_TVS_name[i].Hide(self.Btn_EditTVS_name[i])
+
+        # 7-srt (Empty)
+        self.sizer_Main.AddSpacer(20)
+
+        self.SetSizer(self.sizer_Main)
+
+        self.Layout()
+
+
+
+    def Click_Btn_Open(self, event):
+        Open_Dialog = wx.FileDialog(None, 'Choose a file', '', '', '*.*', wx.FD_OPEN)
+        with Open_Dialog as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                print(dlg.GetPath())
+
+    def Click_Btn_Save(self, event):
+        Open_Dialog = wx.FileDialog(None, 'Choose a file', '', '', '*.*', wx.FD_SAVE)
+        with Open_Dialog as dlg:
+            if dlg.ShowModal() == wx.ID_OK:
+                print(dlg.GetPath())
+                with open(dlg.GetPath(), 'w') as file:
+                    for row in map_year:
+                        file.writelines(row)
+                        file.writelines('\n')
+
+    def Click_SpinCtrl_NumTVS(self, event):
+        for i in range(self.SpinCtrl_NumTVS.GetValue()):
+            self.sizer_TVS_name[i].Show(self.TextCtrl_TVS_name[i])
+            self.sizer_TVS_name[i].Show(self.Btn_EditTVS_name[i])
+            self.sizer_TVS_name[i].Layout()
+        for i in range(self.SpinCtrl_NumTVS.GetValue(), self.maxSpinCtrl_NumTVS):
+            self.sizer_TVS_name[i].Hide(self.TextCtrl_TVS_name[i])
+            self.sizer_TVS_name[i].Hide(self.Btn_EditTVS_name[i])
+            self.sizer_TVS_name[i].Layout()
+        self.Layout()
+
+        #print('Publish something via pubsub')
+        #anObj = dict(a=456, b='abc')
+        pub.sendMessage('Control Panel Options', arg1=self.SpinCtrl_NumTVS.GetValue(), arg2=TVS_type)
+
+    def OnKeyTyped_TVS_name(self, event):
+        print(event.GetId())
+        print(event.GetString())
+        if event.GetId() == self.TVSid[1]:
+            print('SECOND!!')
+
+
+#    def GetNumTVS(self):
+#        NumTVS = self.SpinCtrl_NumTVS.GetValue()
+#        return NumTVS
 
 class SelectObject(object):
-    def __init__(self, btn, clickXY):
+    def __init__(self, btn, clickXY, NumTVS):
         self.SelectedTVS = [0, 0]
         self.button = btn
+        self.NumTVS = NumTVS
         clickX = clickXY[0]
         clickY = clickXY[1]
         cL = [0 for i in range(6)]
@@ -88,6 +185,7 @@ class SelectObject(object):
                 dCol += 1
             dRow += 1
 
+
     def TVS_pos(self):
         if self.SelectedTVS != [0, 0]:
             return self.SelectedTVS
@@ -104,7 +202,7 @@ class SelectObject(object):
         return Sym
 
 
-    def TVS_change(self):
+    def TVS_change(self, *args, **kwargs):
         dRow = self.SelectedTVS[0]
         dCol = self.SelectedTVS[1]
         TVS_index = [dRow, dCol]
@@ -117,6 +215,8 @@ class SelectObject(object):
                     for SymIndex in Sym[i]:     # get indexes of all symetry TVS from list
                         dRow = SymIndex[0]
                         dCol = SymIndex[1]
+
+                        # Modification MAP_YEAR
                         if self.button == 'left':
                             if map_year[dRow][dCol] == '1':
                                 map_year[dRow] = map_year[dRow][:dCol] + '2' + map_year[dRow][(dCol + 1):]
@@ -124,14 +224,31 @@ class SelectObject(object):
                                 map_year[dRow] = map_year[dRow][:dCol] + '3' + map_year[dRow][(dCol + 1):]
                             elif map_year[dRow][dCol] == '3':
                                 map_year[dRow] = map_year[dRow][:dCol] + '1' + map_year[dRow][(dCol + 1):]
+
+                        # Modification MAP_TYPE
                         elif self.button == 'right':
                             if map_type[dRow][dCol] == '1':
-                                map_type[dRow] = map_type[dRow][:dCol] + '2' + map_type[dRow][(dCol + 1):]
+                                if self.NumTVS > 1: map_type[dRow] = map_type[dRow][:dCol] + '2' + map_type[dRow][(dCol + 1):]
+                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
                             elif map_type[dRow][dCol] == '2':
-                                map_type[dRow] = map_type[dRow][:dCol] + '3' + map_type[dRow][(dCol + 1):]
+                                if self.NumTVS > 2: map_type[dRow] = map_type[dRow][:dCol] + '3' + map_type[dRow][(dCol + 1):]
+                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
                             elif map_type[dRow][dCol] == '3':
+                                if self.NumTVS > 3: map_type[dRow] = map_type[dRow][:dCol] + '4' + map_type[dRow][(dCol + 1):]
+                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
+                            elif map_type[dRow][dCol] == '4':
+                                if self.NumTVS > 4: map_type[dRow] = map_type[dRow][:dCol] + '5' + map_type[dRow][(dCol + 1):]
+                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
+                            elif map_type[dRow][dCol] == '5':
                                 map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
+
+
         self.button = ''
+
+    def test_map(self):
+        if map_type[dRow][dCol] == '1':
+            map_type[dRow] = map_type[dRow][:dCol] + '2' + map_type[dRow][(dCol + 1):]
+
 
 class paintTVS(object):
     def __init__(self, radius):
@@ -156,7 +273,7 @@ class paintTVS(object):
                                               (dx - TVS_r, dy - TVS_R / 2), (dx - TVS_r, dy + TVS_R / 2), (dx + 0, dy + TVS_R)]
                 self.txtYearX[dRow][dCol] = dx - TVS_r + TVS_r/5
                 self.txtYearY[dRow][dCol] = dy - TVS_R/2 - TVS_R/15
-                self.txtTypeX[dRow][dCol] = dx - TVS_r + TVS_r/2.4
+                self.txtTypeX[dRow][dCol] = dx - TVS_r + TVS_r/3.3
                 self.txtTypeY[dRow][dCol] = dy-5
                 dx += TVS_r * 2
                 dCol += 1
@@ -214,7 +331,7 @@ class paintTVS(object):
             dCol = 0
             for col in row:
                 # Draw Text - Type
-                FontType = wx.Font(wx.FontInfo(10).Bold())
+                FontType = wx.Font(wx.FontInfo(9).Bold())
                 gc.SetFont(FontType, 'navy')
                 if col == '1':
                     gc.DrawText(TVS_type[0], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
@@ -222,6 +339,10 @@ class paintTVS(object):
                     gc.DrawText(TVS_type[1], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
                 elif col == '3':
                     gc.DrawText(TVS_type[2], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                elif col == '4':
+                    gc.DrawText(TVS_type[3], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                elif col == '5':
+                    gc.DrawText(TVS_type[4], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
 
                 dCol += 1
             dRow += 1
@@ -230,10 +351,23 @@ class clAZonePanel(wx.Panel):
     def __init__(self, *args, **kwargs):
         wx.Panel.__init__(self, *args, **kwargs)
         self.SetBackgroundColour('WHITE')
+        self.NumTVS = 3     # initial (default) value number of TVSs = 3
+        self.TVSss_type = ['XXXXX1', 'XXXXX2', 'XXXXX3', 'XXXXX4', 'XXXXX5']
         # Events by Paint, LeftMouseClick, ..
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_LEFT_DOWN, self.OnClick_Lbtn)
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnClick_Rbtn)
+        # Pub Sub method getting values from Control Panel
+        pub.subscribe(self.ListenerControlPanel, 'Control Panel Options')
+
+    def ListenerControlPanel(self, arg1, arg2=None):
+        self.NumTVS = arg1
+        print(self.NumTVS)
+        if arg2:
+            self.TVSss_type = arg2
+            for i in range(len(arg2)):
+                print(self.TVSss_type[i])
+
 
     def InitBuffer(self):
         # Create Buffer Bitmap
@@ -254,18 +388,18 @@ class clAZonePanel(wx.Panel):
     def OnClick_Lbtn(self, evt):
         # Define Click position
         clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
-        print('TVS number:', SelectObject('left', clickXY).TVS_pos(), 'was selected')
+        print('TVS number:', SelectObject('left', clickXY, self.NumTVS).TVS_pos(), 'was selected')
         # Define clicked TVS
-        SelectObject('left', clickXY).TVS_change()
+        SelectObject('left', clickXY, self.NumTVS).TVS_change()
         # Painting through Buffer
         self.InitBuffer()
 
     def OnClick_Rbtn(self, evt):
         # Define Click position
         clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
-        print('TVS number:', SelectObject('right', clickXY).TVS_pos(), 'was selected')
+        print('TVS number:', SelectObject('right', clickXY, self.NumTVS).TVS_pos(), 'was selected')
         # Define clicked TVS
-        SelectObject('right', clickXY).TVS_change()
+        SelectObject('right', clickXY, self.NumTVS).TVS_change()
         # Painting through Buffer
         self.InitBuffer()
 
@@ -274,7 +408,8 @@ class MainFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1290, 1010))
 
-        ControlPanel = clControlPanel(self, -1, size=(240, 1010), style=wx.SUNKEN_BORDER)
+        #ControlPanel = clControlPanel(self, -1, size=(240, 1010), style=wx.SUNKEN_BORDER)
+        ControlPanel = clControlPanel(self)
         AZonePanel = clAZonePanel(self, -1, size=(1050, 1010), style=wx.SUNKEN_BORDER)
 
         sizerFrame = wx.BoxSizer(wx.HORIZONTAL)
