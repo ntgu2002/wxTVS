@@ -1,6 +1,5 @@
 import wx
 import math
-#from wx.lib.pubsub import pub
 from pubsub import pub
 
 AZ_dimension = 17
@@ -26,7 +25,7 @@ map_year = [
 ]
 
 max_NumTVS = 5
-TVS_type = ['XXXXXX' for i in range(max_NumTVS)]
+max_NumPIN = 8
 map_type = [
     '-----------------',  # 1
     '---------111111--',  # 2
@@ -47,14 +46,13 @@ map_type = [
     '-----------------'  # 17
 ]
 
-class clControlPanel(wx.Panel):
+class ControlPanel(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent=parent)
-
+        wx.Panel.__init__(self, parent=parent, size=(220, 1010))
         self.sizer_Main = wx.BoxSizer(wx.VERTICAL)
 
         # 1-srt (Сaption Open/Save buttons)
-        self.Label_OpenSave = wx.StaticText(self, -1, "Open/Save AZ map:", (0, 0), (240, 20), wx.ALIGN_LEFT)
+        self.Label_OpenSave = wx.StaticText(self, -1, "Open/Save AZ map:", (0, 0), (220, 20), wx.ALIGN_LEFT)
         self.sizer_Main.Add(self.Label_OpenSave, 0, wx.LEFT | wx.RIGHT | wx.UP | wx.EXPAND, 5)
 
         # 2-srt (Open/Save buttons)
@@ -72,7 +70,7 @@ class clControlPanel(wx.Panel):
 
         # 4-srt (Number of assemblies with SpinCtrl)
         self.maxSpinCtrl_NumTVS = max_NumTVS
-        self.Label_NumTVS = wx.StaticText(self, -1, "Number of assemblies:", (0, 0), (140, 20), wx.ALIGN_LEFT)
+        self.Label_NumTVS = wx.StaticText(self, -1, "Num of Assembly types:", (0, 0), (140, 20), wx.ALIGN_LEFT)
         self.SpinCtrl_NumTVS = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumTVS, initial=3)
         self.SpinCtrl_NumTVS.Bind(wx.EVT_SPINCTRL, self.Click_SpinCtrl_NumTVS)
         self.sizer_NumTVS = wx.BoxSizer(wx.HORIZONTAL)
@@ -84,10 +82,10 @@ class clControlPanel(wx.Panel):
         self.sizer_Main.AddSpacer(6)
 
         # 6-srt TextCtrl with names of TVSs
-        #str_TVS_name = ['XXXXXXX' for i in range(self.maxSpinCtrl_NumTVS)]
-        TVS_type[0] = 'E495A18'
-        TVS_type[1] = 'E460A06'
-        TVS_type[2] = 'E445A22'
+        self.TVS_type = ['XXXXXX' for i in range(self.maxSpinCtrl_NumTVS)]
+        self.TVS_type[0] = 'E495A18'
+        self.TVS_type[1] = 'E460A06'
+        self.TVS_type[2] = 'E445A22'
         self.TextCtrl_TVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
         self.Btn_EditTVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
         self.sizer_TVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
@@ -95,7 +93,7 @@ class clControlPanel(wx.Panel):
 
         for i in range(self.maxSpinCtrl_NumTVS):
             self.TVSid[i] = wx.NewId()
-            self.TextCtrl_TVS_name[i] = wx.TextCtrl(self, self.TVSid[i], TVS_type[i], (0, 0), (120, 20))
+            self.TextCtrl_TVS_name[i] = wx.TextCtrl(self, self.TVSid[i], self.TVS_type[i], (0, 0), (120, 20))
             self.TextCtrl_TVS_name[i].Bind(wx.EVT_TEXT, self.OnKeyTyped_TVS_name)
             self.Btn_EditTVS_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (100, 27))
             self.sizer_TVS_name[i] = wx.BoxSizer(wx.HORIZONTAL)
@@ -111,11 +109,46 @@ class clControlPanel(wx.Panel):
         # 7-srt (Empty)
         self.sizer_Main.AddSpacer(20)
 
+        # 8-srt (Number of pins with SpinCtrl)
+        self.maxSpinCtrl_NumPIN = max_NumPIN
+        self.Label_NumPIN = wx.StaticText(self, -1, "Number of pin types:", (0, 0), (140, 20), wx.ALIGN_LEFT)
+        self.SpinCtrl_NumPIN = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumPIN, initial=5)
+        self.SpinCtrl_NumPIN.Bind(wx.EVT_SPINCTRL, self.Click_SpinCtrl_NumPIN)
+        self.sizer_NumPIN = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer_NumPIN.Add(self.Label_NumPIN, 1, wx.ALL | wx.ALIGN_LEFT, 0)
+        self.sizer_NumPIN.Add(self.SpinCtrl_NumPIN, 1, wx.ALL | wx.EXPAND, 0)
+        self.sizer_Main.Add(self.sizer_NumPIN, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+
+        # 9-srt (Empty)
+        self.sizer_Main.AddSpacer(6)
+
+        # 10-srt TextCtrl with names of TVSs
+        self.PIN_type = ['xxxxxx' for i in range(self.maxSpinCtrl_NumPIN)]
+        self.PIN_type[0] = 'U49P50'
+        self.PIN_type[1] = 'U44P50'
+        self.PIN_type[2] = 'U40P50'
+        self.TextCtrl_PIN_name = [0 for i in range(self.maxSpinCtrl_NumPIN)]
+        self.Btn_EditPIN_name = [0 for i in range(self.maxSpinCtrl_NumPIN)]
+        self.sizer_PIN_name = [0 for i in range(self.maxSpinCtrl_NumPIN)]
+        self.PINid = [0 for i in range(self.maxSpinCtrl_NumPIN)]
+
+        for i in range(self.maxSpinCtrl_NumPIN):
+            self.PINid[i] = wx.NewId()
+            self.TextCtrl_PIN_name[i] = wx.TextCtrl(self, self.PINid[i], self.PIN_type[i], (0, 0), (120, 20))
+            self.TextCtrl_PIN_name[i].Bind(wx.EVT_TEXT, self.OnKeyTyped_PIN_name)
+            self.Btn_EditPIN_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (100, 27))
+            self.sizer_PIN_name[i] = wx.BoxSizer(wx.HORIZONTAL)
+            self.sizer_PIN_name[i].Add(self.TextCtrl_PIN_name[i], 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
+            self.sizer_PIN_name[i].AddSpacer(20)
+            self.sizer_PIN_name[i].Add(self.Btn_EditPIN_name[i], 1, wx.ALL | wx.EXPAND, 0)
+            self.sizer_Main.Add(self.sizer_PIN_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+        # Hide extra TVSs
+        for i in range(self.SpinCtrl_NumPIN.GetValue(), self.maxSpinCtrl_NumPIN):
+            self.sizer_PIN_name[i].Hide(self.TextCtrl_PIN_name[i])
+            self.sizer_PIN_name[i].Hide(self.Btn_EditPIN_name[i])
+
         self.SetSizer(self.sizer_Main)
-
         self.Layout()
-
-
 
     def Click_Btn_Open(self, event):
         Open_Dialog = wx.FileDialog(None, 'Choose a file', '', '', '*.*', wx.FD_OPEN)
@@ -137,27 +170,35 @@ class clControlPanel(wx.Panel):
         for i in range(self.SpinCtrl_NumTVS.GetValue()):
             self.sizer_TVS_name[i].Show(self.TextCtrl_TVS_name[i])
             self.sizer_TVS_name[i].Show(self.Btn_EditTVS_name[i])
-            self.sizer_TVS_name[i].Layout()
         for i in range(self.SpinCtrl_NumTVS.GetValue(), self.maxSpinCtrl_NumTVS):
             self.sizer_TVS_name[i].Hide(self.TextCtrl_TVS_name[i])
             self.sizer_TVS_name[i].Hide(self.Btn_EditTVS_name[i])
-            self.sizer_TVS_name[i].Layout()
         self.Layout()
-
-        #print('Publish something via pubsub')
-        #anObj = dict(a=456, b='abc')
-        pub.sendMessage('Control Panel Options', arg1=self.SpinCtrl_NumTVS.GetValue(), arg2=TVS_type)
+        pub.sendMessage('CPanel TVS', arg1=self.SpinCtrl_NumTVS.GetValue(), arg2=self.TVS_type)
 
     def OnKeyTyped_TVS_name(self, event):
-        print(event.GetId())
-        print(event.GetString())
-        if event.GetId() == self.TVSid[1]:
-            print('SECOND!!')
+        #print(event.GetId())
+        #print(event.GetString())
+        for i in range(max_NumTVS):
+            if self.TVSid[i] == event.GetId():
+                self.TVS_type[i] = event.GetString()
+                pub.sendMessage('CPanel TVS', arg1=self.SpinCtrl_NumTVS.GetValue(), arg2=self.TVS_type)
 
+    def Click_SpinCtrl_NumPIN(self, event):
+        for i in range(self.SpinCtrl_NumPIN.GetValue()):
+            self.sizer_PIN_name[i].Show(self.TextCtrl_PIN_name[i])
+            self.sizer_PIN_name[i].Show(self.Btn_EditPIN_name[i])
+        for i in range(self.SpinCtrl_NumPIN.GetValue(), self.maxSpinCtrl_NumPIN):
+            self.sizer_PIN_name[i].Hide(self.TextCtrl_PIN_name[i])
+            self.sizer_PIN_name[i].Hide(self.Btn_EditPIN_name[i])
+        self.Layout()
+        pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
 
-#    def GetNumTVS(self):
-#        NumTVS = self.SpinCtrl_NumTVS.GetValue()
-#        return NumTVS
+    def OnKeyTyped_PIN_name(self, event):
+        for i in range(max_NumPIN):
+            if self.PINid[i] == event.GetId():
+                self.PIN_type[i] = event.GetString()
+                pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
 
 class SelectObject(object):
     def __init__(self, btn, clickXY, NumTVS):
@@ -167,7 +208,7 @@ class SelectObject(object):
         clickX = clickXY[0]
         clickY = clickXY[1]
         cL = [0 for i in range(6)]
-        points = paintTVS(TVS_SIZE).Points()
+        points = PaintTVS(TVS_SIZE).Points()
 
         dRow = 0
         for row in map_year:
@@ -250,7 +291,7 @@ class SelectObject(object):
             map_type[dRow] = map_type[dRow][:dCol] + '2' + map_type[dRow][(dCol + 1):]
 
 
-class paintTVS(object):
+class PaintTVS(object):
     def __init__(self, radius):
         TVS_r = radius
         self.TVS_r = radius
@@ -285,7 +326,9 @@ class paintTVS(object):
     def Points(self):
         return self.pointsTVS
 
-    def Render(self, gc):
+    def Render(self, gc, T_type):
+        self.TVS_type = [0 for i in range(max_NumTVS)]
+        self.TVS_type = T_type
         path = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
 
         # Change TVS year by color and text
@@ -334,40 +377,50 @@ class paintTVS(object):
                 FontType = wx.Font(wx.FontInfo(9).Bold())
                 gc.SetFont(FontType, 'navy')
                 if col == '1':
-                    gc.DrawText(TVS_type[0], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                    gc.DrawText(self.TVS_type[0], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
                 elif col == '2':
-                    gc.DrawText(TVS_type[1], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                    gc.DrawText(self.TVS_type[1], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
                 elif col == '3':
-                    gc.DrawText(TVS_type[2], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                    gc.DrawText(self.TVS_type[2], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
                 elif col == '4':
-                    gc.DrawText(TVS_type[3], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                    gc.DrawText(self.TVS_type[3], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
                 elif col == '5':
-                    gc.DrawText(TVS_type[4], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
+                    gc.DrawText(self.TVS_type[4], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
 
                 dCol += 1
             dRow += 1
 
-class clAZonePanel(wx.Panel):
-    def __init__(self, *args, **kwargs):
-        wx.Panel.__init__(self, *args, **kwargs)
+#class AZonePanel(wx.Panel):
+#    def __init__(self, parent):
+#        wx.Panel.__init__(self, parent=parent, size=(1050, 1010), style=wx.SUNKEN_BORDER)
+class AZonePanel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
         self.SetBackgroundColour('WHITE')
         self.NumTVS = 3     # initial (default) value number of TVSs = 3
-        self.TVSss_type = ['XXXXX1', 'XXXXX2', 'XXXXX3', 'XXXXX4', 'XXXXX5']
+        self.TVS_type = ['XXXXXX' for i in range(max_NumTVS)]
+        self.TVS_type[0] = 'E495A18'
+        self.TVS_type[1] = 'E460A06'
+        self.TVS_type[2] = 'E445A22'
+        self.NumPIN = 5     # initial (default) value number of PINs = 5
+        self.PIN_type = ['xxxxxx' for i in range(max_NumPIN)]
+        self.PIN_type[0] = 'U49P50'
+        self.PIN_type[1] = 'U44P50'
+        self.PIN_type[2] = 'U40P50'
         # Events by Paint, LeftMouseClick, ..
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_LEFT_DOWN, self.OnClick_Lbtn)
         self.Bind(wx.EVT_RIGHT_DOWN, self.OnClick_Rbtn)
         # Pub Sub method getting values from Control Panel
-        pub.subscribe(self.ListenerControlPanel, 'Control Panel Options')
+        pub.subscribe(self.ListenerCPanelTVS, 'CPanel TVS')
 
-    def ListenerControlPanel(self, arg1, arg2=None):
+    def ListenerCPanelTVS(self, arg1, arg2=None):
         self.NumTVS = arg1
-        print(self.NumTVS)
         if arg2:
-            self.TVSss_type = arg2
-            for i in range(len(arg2)):
-                print(self.TVSss_type[i])
-
+            self.TVS_type = arg2
+            #for i in range(len(arg2)):
+                #print(self.TVS_type[i])
+            self.InitBuffer()
 
     def InitBuffer(self):
         # Create Buffer Bitmap
@@ -379,7 +432,7 @@ class clAZonePanel(wx.Panel):
         # Create GraphicsContext
         gc = wx.GraphicsContext.Create(dc)
         # Painting in GraphicsContext
-        paintTVS(TVS_SIZE).Render(gc)
+        PaintTVS(TVS_SIZE).Render(gc, self.TVS_type)
 
     def OnPaint(self, evt):
         # Painting through Buffer
@@ -403,22 +456,31 @@ class clAZonePanel(wx.Panel):
         # Painting through Buffer
         self.InitBuffer()
 
-
 class MainFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1290, 1010))
+        wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1250, 1010))
 
-        #ControlPanel = clControlPanel(self, -1, size=(240, 1010), style=wx.SUNKEN_BORDER)
-        ControlPanel = clControlPanel(self)
-        AZonePanel = clAZonePanel(self, -1, size=(1050, 1010), style=wx.SUNKEN_BORDER)
+        mainControlPanel = ControlPanel(self)
+        mainMapsBook = wx.Notebook(self, -1, size=(1030, 1010))
+        mainAZonePanel = AZonePanel(mainMapsBook)
+        mainMapsBook.AddPage(mainAZonePanel, "Active ZONE map")
 
         sizerFrame = wx.BoxSizer(wx.HORIZONTAL)
-        sizerFrame.Add(ControlPanel, 0, wx.EXPAND)
-        sizerFrame.Add(AZonePanel, 1, wx.EXPAND)
+        sizerFrame.Add(mainControlPanel, 0, wx.EXPAND)
+        sizerFrame.Add(mainMapsBook, 1, wx.EXPAND)
 
         self.SetAutoLayout(True)
         self.SetSizer(sizerFrame)
         self.Layout()
+
+        pub.subscribe(self.ListenerCPanelPIN, 'CPanel PIN')
+
+    def ListenerCPanelPIN(self, arg1, arg2=None):
+        self.NumPIN = arg1
+        if arg2:
+            self.PIN_type = arg2
+
+
 
 if  __name__ == '__main__':
     app = wx.App()
