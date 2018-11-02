@@ -25,6 +25,7 @@ map_year = [
 ]
 
 max_NumTVS = 5
+init_NumTVS = 3
 max_NumPIN = 8
 map_type = [
     '-----------------',  # 1
@@ -58,8 +59,8 @@ class ControlPanel(wx.Panel):
         # 2-srt (Open/Save buttons)
         self.Btn_Open = wx.Button(self, -1, "Open", (0, 0), (100, 27))
         self.Btn_Save = wx.Button(self, -1, "Save", (0, 0), (100, 27))
-        self.Btn_Open.Bind(wx.EVT_BUTTON, self.Click_Btn_Open)
-        self.Btn_Save.Bind(wx.EVT_BUTTON, self.Click_Btn_Save)
+        self.Btn_Open.Bind(wx.EVT_BUTTON, self.click_Btn_Open)
+        self.Btn_Save.Bind(wx.EVT_BUTTON, self.click_Btn_Save)
         self.sizer_OpenSaveBtn = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer_OpenSaveBtn.Add(self.Btn_Open, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 0)
         self.sizer_OpenSaveBtn.Add(self.Btn_Save, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 0)
@@ -71,8 +72,8 @@ class ControlPanel(wx.Panel):
         # 4-srt (Number of assemblies with SpinCtrl)
         self.maxSpinCtrl_NumTVS = max_NumTVS
         self.Label_NumTVS = wx.StaticText(self, -1, "Num of Assembly types:", (0, 0), (140, 20), wx.ALIGN_LEFT)
-        self.SpinCtrl_NumTVS = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumTVS, initial=3)
-        self.SpinCtrl_NumTVS.Bind(wx.EVT_SPINCTRL, self.Click_SpinCtrl_NumTVS)
+        self.SpinCtrl_NumTVS = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumTVS, initial=init_NumTVS)
+        self.SpinCtrl_NumTVS.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumTVS)
         self.sizer_NumTVS = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer_NumTVS.Add(self.Label_NumTVS, 1, wx.ALL | wx.ALIGN_LEFT, 0)
         self.sizer_NumTVS.Add(self.SpinCtrl_NumTVS, 1, wx.ALL | wx.EXPAND, 0)
@@ -94,7 +95,7 @@ class ControlPanel(wx.Panel):
         for i in range(self.maxSpinCtrl_NumTVS):
             self.TVSid[i] = wx.NewId()
             self.TextCtrl_TVS_name[i] = wx.TextCtrl(self, self.TVSid[i], self.TVS_type[i], (0, 0), (120, 20))
-            self.TextCtrl_TVS_name[i].Bind(wx.EVT_TEXT, self.OnKeyTyped_TVS_name)
+            self.TextCtrl_TVS_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_TVS_name)
             self.Btn_EditTVS_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (100, 27))
             self.sizer_TVS_name[i] = wx.BoxSizer(wx.HORIZONTAL)
             self.sizer_TVS_name[i].Add(self.TextCtrl_TVS_name[i], 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
@@ -113,7 +114,7 @@ class ControlPanel(wx.Panel):
         self.maxSpinCtrl_NumPIN = max_NumPIN
         self.Label_NumPIN = wx.StaticText(self, -1, "Number of pin types:", (0, 0), (140, 20), wx.ALIGN_LEFT)
         self.SpinCtrl_NumPIN = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumPIN, initial=5)
-        self.SpinCtrl_NumPIN.Bind(wx.EVT_SPINCTRL, self.Click_SpinCtrl_NumPIN)
+        self.SpinCtrl_NumPIN.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumPIN)
         self.sizer_NumPIN = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer_NumPIN.Add(self.Label_NumPIN, 1, wx.ALL | wx.ALIGN_LEFT, 0)
         self.sizer_NumPIN.Add(self.SpinCtrl_NumPIN, 1, wx.ALL | wx.EXPAND, 0)
@@ -135,7 +136,7 @@ class ControlPanel(wx.Panel):
         for i in range(self.maxSpinCtrl_NumPIN):
             self.PINid[i] = wx.NewId()
             self.TextCtrl_PIN_name[i] = wx.TextCtrl(self, self.PINid[i], self.PIN_type[i], (0, 0), (120, 20))
-            self.TextCtrl_PIN_name[i].Bind(wx.EVT_TEXT, self.OnKeyTyped_PIN_name)
+            self.TextCtrl_PIN_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_PIN_name)
             self.Btn_EditPIN_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (100, 27))
             self.sizer_PIN_name[i] = wx.BoxSizer(wx.HORIZONTAL)
             self.sizer_PIN_name[i].Add(self.TextCtrl_PIN_name[i], 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
@@ -150,13 +151,13 @@ class ControlPanel(wx.Panel):
         self.SetSizer(self.sizer_Main)
         self.Layout()
 
-    def Click_Btn_Open(self, event):
+    def click_Btn_Open(self, event):
         Open_Dialog = wx.FileDialog(None, 'Choose a file', '', '', '*.*', wx.FD_OPEN)
         with Open_Dialog as dlg:
             if dlg.ShowModal() == wx.ID_OK:
                 print(dlg.GetPath())
 
-    def Click_Btn_Save(self, event):
+    def click_Btn_Save(self, event):
         Open_Dialog = wx.FileDialog(None, 'Choose a file', '', '', '*.*', wx.FD_SAVE)
         with Open_Dialog as dlg:
             if dlg.ShowModal() == wx.ID_OK:
@@ -166,7 +167,7 @@ class ControlPanel(wx.Panel):
                         file.writelines(row)
                         file.writelines('\n')
 
-    def Click_SpinCtrl_NumTVS(self, event):
+    def click_SpinCtrl_NumTVS(self, event):
         for i in range(self.SpinCtrl_NumTVS.GetValue()):
             self.sizer_TVS_name[i].Show(self.TextCtrl_TVS_name[i])
             self.sizer_TVS_name[i].Show(self.Btn_EditTVS_name[i])
@@ -176,7 +177,7 @@ class ControlPanel(wx.Panel):
         self.Layout()
         pub.sendMessage('CPanel TVS', arg1=self.SpinCtrl_NumTVS.GetValue(), arg2=self.TVS_type)
 
-    def OnKeyTyped_TVS_name(self, event):
+    def onKeyTyped_TVS_name(self, event):
         #print(event.GetId())
         #print(event.GetString())
         for i in range(max_NumTVS):
@@ -184,7 +185,7 @@ class ControlPanel(wx.Panel):
                 self.TVS_type[i] = event.GetString()
                 pub.sendMessage('CPanel TVS', arg1=self.SpinCtrl_NumTVS.GetValue(), arg2=self.TVS_type)
 
-    def Click_SpinCtrl_NumPIN(self, event):
+    def click_SpinCtrl_NumPIN(self, event):
         for i in range(self.SpinCtrl_NumPIN.GetValue()):
             self.sizer_PIN_name[i].Show(self.TextCtrl_PIN_name[i])
             self.sizer_PIN_name[i].Show(self.Btn_EditPIN_name[i])
@@ -194,7 +195,7 @@ class ControlPanel(wx.Panel):
         self.Layout()
         pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
 
-    def OnKeyTyped_PIN_name(self, event):
+    def onKeyTyped_PIN_name(self, event):
         for i in range(max_NumPIN):
             if self.PINid[i] == event.GetId():
                 self.PIN_type[i] = event.GetString()
@@ -205,10 +206,11 @@ class SelectObject(object):
         self.SelectedTVS = [0, 0]
         self.button = btn
         self.NumTVS = NumTVS
+        print('SELECT', self.NumTVS)
         clickX = clickXY[0]
         clickY = clickXY[1]
         cL = [0 for i in range(6)]
-        points = PaintTVS(TVS_SIZE).Points()
+        points = PaintTVS(TVS_SIZE).returnPoints()
 
         dRow = 0
         for row in map_year:
@@ -227,11 +229,11 @@ class SelectObject(object):
             dRow += 1
 
 
-    def TVS_pos(self):
+    def fTVS_pos(self):
         if self.SelectedTVS != [0, 0]:
             return self.SelectedTVS
 
-    def TVS_symetry(self):
+    def fTVS_symetry(self):
         Cn = int(AZ_dimension/2)
         Sym = [0 for i in range(29)]
         k=0
@@ -243,14 +245,14 @@ class SelectObject(object):
         return Sym
 
 
-    def TVS_change(self, *args, **kwargs):
+    def fTVS_change(self, *args, **kwargs):
         dRow = self.SelectedTVS[0]
         dCol = self.SelectedTVS[1]
         TVS_index = [dRow, dCol]
         Cn = int(AZ_dimension / 2)
 
         if self.SelectedTVS != [0, 0]:  # test if click on somewhere but no on TVS
-            Sym = self.TVS_symetry()    # call TVS_symetry function
+            Sym = self.fTVS_symetry()    # call fTVS_symetry function
             for i in range(len(Sym)):   # walk by all Sym koeff list
                 if TVS_index in Sym[i]:         # looking up Symetry
                     for SymIndex in Sym[i]:     # get indexes of all symetry TVS from list
@@ -283,13 +285,7 @@ class SelectObject(object):
                             elif map_type[dRow][dCol] == '5':
                                 map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
 
-
         self.button = ''
-
-    def test_map(self):
-        if map_type[dRow][dCol] == '1':
-            map_type[dRow] = map_type[dRow][:dCol] + '2' + map_type[dRow][(dCol + 1):]
-
 
 class PaintTVS(object):
     def __init__(self, radius):
@@ -323,10 +319,10 @@ class PaintTVS(object):
             dx = TVS_r * dRow - offset
 
 
-    def Points(self):
+    def returnPoints(self):
         return self.pointsTVS
 
-    def Render(self, gc, T_type):
+    def render(self, gc, T_type):
         self.TVS_type = [0 for i in range(max_NumTVS)]
         self.TVS_type = T_type
         path = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
@@ -390,41 +386,49 @@ class PaintTVS(object):
                 dCol += 1
             dRow += 1
 
-#class AZonePanel(wx.Panel):
-#    def __init__(self, parent):
-#        wx.Panel.__init__(self, parent=parent, size=(1050, 1010), style=wx.SUNKEN_BORDER)
+class InitBuffer(object):
+    def __init__(self, clientDC, w, h, TVS_type):
+        # Create Buffer Bitmap
+        Buffer = wx.Bitmap(w, h)
+        # Create BufferedDC
+        dc = wx.BufferedDC(clientDC, Buffer)
+        dc.Clear()
+        # Create GraphicsContext
+        gc = wx.GraphicsContext.Create(dc)
+        # Painting in GraphicsContext
+        PaintTVS(TVS_SIZE).render(gc, TVS_type)
+
+
 class AZonePanel(wx.Panel):
-    def __init__(self, parent):
+    def __init__(self, parent, NumTVS, TVS_type):
         wx.Panel.__init__(self, parent)
         self.SetBackgroundColour('WHITE')
-        self.NumTVS = 3     # initial (default) value number of TVSs = 3
-        self.TVS_type = ['XXXXXX' for i in range(max_NumTVS)]
-        self.TVS_type[0] = 'E495A18'
-        self.TVS_type[1] = 'E460A06'
-        self.TVS_type[2] = 'E445A22'
-        self.NumPIN = 5     # initial (default) value number of PINs = 5
-        self.PIN_type = ['xxxxxx' for i in range(max_NumPIN)]
-        self.PIN_type[0] = 'U49P50'
-        self.PIN_type[1] = 'U44P50'
-        self.PIN_type[2] = 'U40P50'
-        # Events by Paint, LeftMouseClick, ..
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.Bind(wx.EVT_LEFT_DOWN, self.OnClick_Lbtn)
-        self.Bind(wx.EVT_RIGHT_DOWN, self.OnClick_Rbtn)
-        # Pub Sub method getting values from Control Panel
-        pub.subscribe(self.ListenerCPanelTVS, 'CPanel TVS')
+        self.NumTVS = NumTVS
+        self.TVS_type = TVS_type
 
-    def ListenerCPanelTVS(self, arg1, arg2=None):
+        # Events by Paint, LeftMouseClick, ..
+        self.Bind(wx.EVT_PAINT, self.onPaint)
+        self.Bind(wx.EVT_LEFT_DOWN, self.onClick_Lbtn)
+        self.Bind(wx.EVT_RIGHT_DOWN, self.onClick_Rbtn)
+        # Pub Sub method getting values from Control Panel
+        pub.subscribe(self.listenerCPanelTVS, 'CPanel TVS')
+
+    def listenerCPanelTVS(self, arg1, arg2=None):
         self.NumTVS = arg1
         if arg2:
             self.TVS_type = arg2
             #for i in range(len(arg2)):
                 #print(self.TVS_type[i])
-            self.InitBuffer()
+            self.initBufferAZ()
 
-    def InitBuffer(self):
+    def initBufferAZ(self):
         # Create Buffer Bitmap
+        clientDC = wx.ClientDC(self)
         w, h = self.GetClientSize()
+        #print('initBufferAZ:', w, h)
+
+        #InitBuffer(clientDC, w, h, self.TVS_type)
+
         self.Buffer = wx.Bitmap(w, h)
         # Create BufferedDC
         dc = wx.BufferedDC(wx.ClientDC(self), self.Buffer)
@@ -432,54 +436,144 @@ class AZonePanel(wx.Panel):
         # Create GraphicsContext
         gc = wx.GraphicsContext.Create(dc)
         # Painting in GraphicsContext
-        PaintTVS(TVS_SIZE).Render(gc, self.TVS_type)
+        PaintTVS(TVS_SIZE).render(gc, self.TVS_type)
 
-    def OnPaint(self, evt):
+    def onPaint(self, evt):
         # Painting through Buffer
-        self.InitBuffer()
+        self.initBufferAZ()
 
-    def OnClick_Lbtn(self, evt):
+    def onClick_Lbtn(self, evt):
         # Define Click position
         clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
-        print('TVS number:', SelectObject('left', clickXY, self.NumTVS).TVS_pos(), 'was selected')
+        print('TVS number:', SelectObject('left', clickXY, self.NumTVS).fTVS_pos(), 'was selected')
         # Define clicked TVS
-        SelectObject('left', clickXY, self.NumTVS).TVS_change()
+        print('BEFOR_SELECT',self.NumTVS)
+        SelectObject('left', clickXY, self.NumTVS).fTVS_change()
         # Painting through Buffer
-        self.InitBuffer()
+        self.initBufferAZ()
 
-    def OnClick_Rbtn(self, evt):
+    def onClick_Rbtn(self, evt):
         # Define Click position
         clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
-        print('TVS number:', SelectObject('right', clickXY, self.NumTVS).TVS_pos(), 'was selected')
+        print('TVS number:', SelectObject('right', clickXY, self.NumTVS).fTVS_pos(), 'was selected')
         # Define clicked TVS
-        SelectObject('right', clickXY, self.NumTVS).TVS_change()
+        SelectObject('right', clickXY, self.NumTVS).fTVS_change()
         # Painting through Buffer
-        self.InitBuffer()
+        self.initBufferAZ()
+
+class TVS1Panel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, size=(0, 0))
+
+class TVS2Panel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, size=(0, 0))
+
+class TVS3Panel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, size=(0, 0))
+
+class TVS4Panel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, size=(0, 0))
+
+class TVS5Panel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, size=(0, 0))
+
 
 class MainFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1250, 1010))
 
-        mainControlPanel = ControlPanel(self)
-        mainMapsBook = wx.Notebook(self, -1, size=(1030, 1010))
-        mainAZonePanel = AZonePanel(mainMapsBook)
-        mainMapsBook.AddPage(mainAZonePanel, "Active ZONE map")
+        self.NumTVS = init_NumTVS     # initial (default) value number of TVSs = 3
+        self.TVS_type = ['XXXXXX' for i in range(max_NumTVS)]
+        self.TVS_type[0] = 'E495A18'
+        self.TVS_type[1] = 'E460A06'
+        self.TVS_type[2] = 'E445A22'
 
-        sizerFrame = wx.BoxSizer(wx.HORIZONTAL)
-        sizerFrame.Add(mainControlPanel, 0, wx.EXPAND)
-        sizerFrame.Add(mainMapsBook, 1, wx.EXPAND)
+        self.NumPIN = 5     # initial (default) value number of PINs = 5
+        self.PIN_type = ['xxxxxx' for i in range(max_NumPIN)]
+        self.PIN_type[0] = 'U49P50'
+        self.PIN_type[1] = 'U44P50'
+        self.PIN_type[2] = 'U40P50'
 
-        self.SetAutoLayout(True)
-        self.SetSizer(sizerFrame)
+        self.mainControlPanel = ControlPanel(self)
+        self.mainMapsBook = wx.Notebook(self, -1, size=(1030, 1010))
+
+        self.mainAZonePanel = AZonePanel(self.mainMapsBook, self.NumTVS, self.TVS_type)
+        self.mainTVSPanel = [TVS1Panel(self.mainMapsBook), TVS2Panel(self.mainMapsBook), TVS3Panel(self.mainMapsBook),
+                        TVS4Panel(self.mainMapsBook), TVS5Panel(self.mainMapsBook)]
+
+        self.mainMapsBook.AddPage(self.mainAZonePanel, "Active ZONE map")
+        self.mainMapsBook_NumPage = 0
+
+        self.sizerFrame = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizerFrame.Add(self.mainControlPanel, 0, wx.EXPAND)
+        self.sizerFrame.Add(self.mainMapsBook, 1, wx.EXPAND)
+        self.SetSizer(self.sizerFrame)
+
+        self.NumTVS = init_NumTVS
+        #w, h = self.mainMapsBook.GetPage(0).GetClientSize()
+
+        self.updateMapsBook()
+
+        # Listen change in num TVS
+        pub.subscribe(self.listenerCPanelTVS, 'CPanel TVS')
+
+        #pub.subscribe(self.ListenerCPanelPIN, 'CPanel PIN')
+
+    def updateMapsBook(self):
+
+        print('UP_MAP', self.TVS_type[0])
+
+        # If Add TVS
+        if self.NumTVS > self.mainMapsBook_NumPage:
+            for i in range(self.mainMapsBook_NumPage, self.NumTVS, 1):
+                self.mainMapsBook.AddPage(self.mainTVSPanel[i], self.TVS_type[i])
+                self.mainMapsBook_NumPage += 1
+            self.mainMapsBook.ChangeSelection(self.mainMapsBook_NumPage)
+        # If Remove TVS
+        if self.NumTVS < self.mainMapsBook_NumPage:
+            if self.mainMapsBook.GetSelection() == self.mainMapsBook_NumPage:
+                self.mainMapsBook.ChangeSelection(self.mainMapsBook_NumPage-1)
+            for i in range(self.mainMapsBook_NumPage, self.NumTVS, -1):
+                self.mainMapsBook.RemovePage(i)
+                self.mainMapsBook_NumPage -= 1
+            self.mainMapsBook.ChangeSelection(self.mainMapsBook_NumPage)
+
+        for i in range(self.NumTVS):
+            self.mainMapsBook.SetPageText(i+1, self.TVS_type[i])
+
+
+        self.mainMapsBook.ChangeSelection(0)
+        #self.SetAutoLayout(True) # Auto Layout when window is resized
         self.Layout()
 
-        pub.subscribe(self.ListenerCPanelPIN, 'CPanel PIN')
+        clientDC = wx.ClientDC(self)
+        w, h = self.GetClientSize()
+        w = 500
+        h = 500
+        #InitBuffer(clientDC, w, h, self.NumTVS, self.TVS_type)
 
-    def ListenerCPanelPIN(self, arg1, arg2=None):
-        self.NumPIN = arg1
+    def listenerCPanelTVS(self, arg1, arg2=None):
+        self.NumTVS = arg1
+        print('NumTVS:', self.NumTVS)
         if arg2:
-            self.PIN_type = arg2
+            self.TVS_type = arg2
+            for i in range(max_NumTVS):
+                print(self.TVS_type[i])
+        self.updateMapsBook()
 
+
+
+#    def ListenerCPanelPIN(self, arg1, arg2=None):
+#        self.NumPIN = arg1
+#        if arg2:
+#            self.PIN_type = arg2
+#            #print(arg1)
+#            for i in range(len(arg2)):
+#                #print(self.PIN_type[i])
 
 
 if  __name__ == '__main__':
