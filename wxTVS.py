@@ -1,6 +1,8 @@
 import wx
+import wx.lib.colourdb
 import math
 from pubsub import pub
+from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 
 AZ_dimension = 17
 TVS_SIZE = 32
@@ -206,7 +208,7 @@ class SelectObject(object):
         self.SelectedTVS = [0, 0]
         self.button = btn
         self.NumTVS = NumTVS
-        print('SELECT', self.NumTVS)
+        #print('SELECT', self.NumTVS)
         clickX = clickXY[0]
         clickY = clickXY[1]
         cL = [0 for i in range(6)]
@@ -382,22 +384,8 @@ class PaintTVS(object):
                     gc.DrawText(self.TVS_type[3], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
                 elif col == '5':
                     gc.DrawText(self.TVS_type[4], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
-
                 dCol += 1
             dRow += 1
-
-class InitBuffer(object):
-    def __init__(self, clientDC, w, h, TVS_type):
-        # Create Buffer Bitmap
-        Buffer = wx.Bitmap(w, h)
-        # Create BufferedDC
-        dc = wx.BufferedDC(clientDC, Buffer)
-        dc.Clear()
-        # Create GraphicsContext
-        gc = wx.GraphicsContext.Create(dc)
-        # Painting in GraphicsContext
-        PaintTVS(TVS_SIZE).render(gc, TVS_type)
-
 
 class AZonePanel(wx.Panel):
     def __init__(self, parent, NumTVS, TVS_type):
@@ -423,12 +411,7 @@ class AZonePanel(wx.Panel):
 
     def initBufferAZ(self):
         # Create Buffer Bitmap
-        clientDC = wx.ClientDC(self)
         w, h = self.GetClientSize()
-        #print('initBufferAZ:', w, h)
-
-        #InitBuffer(clientDC, w, h, self.TVS_type)
-
         self.Buffer = wx.Bitmap(w, h)
         # Create BufferedDC
         dc = wx.BufferedDC(wx.ClientDC(self), self.Buffer)
@@ -447,7 +430,6 @@ class AZonePanel(wx.Panel):
         clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
         print('TVS number:', SelectObject('left', clickXY, self.NumTVS).fTVS_pos(), 'was selected')
         # Define clicked TVS
-        print('BEFOR_SELECT',self.NumTVS)
         SelectObject('left', clickXY, self.NumTVS).fTVS_change()
         # Painting through Buffer
         self.initBufferAZ()
@@ -463,11 +445,78 @@ class AZonePanel(wx.Panel):
 
 class TVS1Panel(wx.Panel):
     def __init__(self, parent):
-        wx.Panel.__init__(self, parent, size=(0, 0))
+        wx.Panel.__init__(self, parent)
+        #w, h = parent.GetClientSize()
+        w = 1000
+        h = 940
+
+        # Add the Canvas
+        self.Canvas = FloatCanvas.FloatCanvas(self,-1,(w, h), ProjectionFun = None, Debug = 0, BackgroundColor = 'WHITE')
+        self.DrawMap()
+
+        #self.Canvas.Draw()
+
+        #self.Show(True)
+        self.Canvas.ZoomToBB()
+
+    def DrawMap(self):
+
+        r = 35
+        R = 2 * r / math.sqrt(3)
+        dx = 0
+        dy = 0
+
+        Hex = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
+
+        dRow = 0
+        for row in map_year:
+            dCol = 0
+            for col in row:
+                # Draw TVS
+                Points = [(dx + r, dy + R / 2), (dx + r, dy - R / 2),
+                          (dx + 0, dy - R), (dx - r, dy - R / 2),
+                          (dx - r, dy + R / 2), (dx + 0, dy + R)]
+                if col == '1':
+                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor='YELLOW')
+                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
+                    Hex[dRow][dCol].Index = (dRow, dCol)
+                elif col == '2':
+                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor='GREEN')
+                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
+                    Hex[dRow][dCol].Index = (dRow, dCol)
+                elif col == '3':
+                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor='PINK')
+                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
+                    Hex[dRow][dCol].Index = (dRow, dCol)
+                else:
+                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='WHITE', FillColor='WHITE')
+                    Hex[dRow][dCol].Hide()
+                dx += 2 * r
+                dCol += 1
+            dRow += 1
+            dy += R * 2 - R / 2
+            dx = r * dRow
+
+        # Zoom
+        Csym = int(AZ_dimension / 2)
+        self.Canvas.Zoom(1, (r*2*Csym+r*Csym, R*Csym*3/2))
+
+    def onClick_Lbtn(self, Hex):
+        print("A '%s' Hex was hit, obj Index: (%i:%i) "%(Hex.FillColor, Hex.Index[0], Hex.Index[1]))
+        Hex.SetFillColor('Red')
+        self.Canvas.Draw(True)
+
+    def onClick_Rbtn(self, Hex):
+        print("A %s Hex was hit, obj ID: %i"%(Hex.FillColor, id(Hex)))
+
 
 class TVS2Panel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, size=(0, 0))
+
 
 class TVS3Panel(wx.Panel):
     def __init__(self, parent):
@@ -524,9 +573,6 @@ class MainFrame(wx.Frame):
         #pub.subscribe(self.ListenerCPanelPIN, 'CPanel PIN')
 
     def updateMapsBook(self):
-
-        print('UP_MAP', self.TVS_type[0])
-
         # If Add TVS
         if self.NumTVS > self.mainMapsBook_NumPage:
             for i in range(self.mainMapsBook_NumPage, self.NumTVS, 1):
@@ -545,6 +591,7 @@ class MainFrame(wx.Frame):
         for i in range(self.NumTVS):
             self.mainMapsBook.SetPageText(i+1, self.TVS_type[i])
 
+        self.mainMapsBook.AddPage(self.mainTVSPanel[4], '')
 
         self.mainMapsBook.ChangeSelection(0)
         #self.SetAutoLayout(True) # Auto Layout when window is resized
@@ -558,13 +605,12 @@ class MainFrame(wx.Frame):
 
     def listenerCPanelTVS(self, arg1, arg2=None):
         self.NumTVS = arg1
-        print('NumTVS:', self.NumTVS)
+        #print('NumTVS:', self.NumTVS)
         if arg2:
             self.TVS_type = arg2
-            for i in range(max_NumTVS):
-                print(self.TVS_type[i])
+            #for i in range(max_NumTVS):
+                #print(self.TVS_type[i])
         self.updateMapsBook()
-
 
 
 #    def ListenerCPanelPIN(self, arg1, arg2=None):
