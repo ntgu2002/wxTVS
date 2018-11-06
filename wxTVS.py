@@ -6,6 +6,7 @@ from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 
 AZ_dimension = 17
 TVS_SIZE = 32
+color_year = ['GREEN', 'YELLOW', 'PINK']
 map_year = [
     '-----------------',  # 1
     '---------111111--',  # 2
@@ -452,21 +453,19 @@ class TVS1Panel(wx.Panel):
 
         # Add the Canvas
         self.Canvas = FloatCanvas.FloatCanvas(self,-1,(w, h), ProjectionFun = None, Debug = 0, BackgroundColor = 'WHITE')
-        self.DrawMap()
 
-        #self.Canvas.Draw()
 
-        #self.Show(True)
-        self.Canvas.ZoomToBB()
-
-    def DrawMap(self):
-
+    def DrawMap(self, NumTVS, TVS_type):
+        print('NumTVS, TVS_type:', NumTVS, TVS_type)
+        self.NumTVS = NumTVS
+        self.TVS_type = TVS_type
         r = 35
         R = 2 * r / math.sqrt(3)
         dx = 0
         dy = 0
-
-        Hex = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
+        self.Hex = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
+        self.HexTextYear = [['' for i in range(AZ_dimension)] for j in range(AZ_dimension)]
+        self.HexTextType = [['' for i in range(AZ_dimension)] for j in range(AZ_dimension)]
 
         dRow = 0
         for row in map_year:
@@ -477,23 +476,66 @@ class TVS1Panel(wx.Panel):
                           (dx + 0, dy - R), (dx - r, dy - R / 2),
                           (dx - r, dy + R / 2), (dx + 0, dy + R)]
                 if col == '1':
-                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor='YELLOW')
-                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
-                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
-                    Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_year[0])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.Hex[dRow][dCol].NumTVS = NumTVS
+                    self.Hex[dRow][dCol].TVS_type = TVS_type
+                    self.HexTextYear[dRow][dCol] = self.Canvas.AddText('1', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 elif col == '2':
-                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor='GREEN')
-                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
-                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
-                    Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_year[1])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.Hex[dRow][dCol].NumTVS = NumTVS
+                    self.Hex[dRow][dCol].TVS_type = TVS_type
+                    self.HexTextYear[dRow][dCol] = self.Canvas.AddText('2', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 elif col == '3':
-                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor='PINK')
-                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
-                    Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
-                    Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_year[2])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.Hex[dRow][dCol].NumTVS = NumTVS
+                    self.Hex[dRow][dCol].TVS_type = TVS_type
+                    self.HexTextYear[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 else:
-                    Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='WHITE', FillColor='WHITE')
-                    Hex[dRow][dCol].Hide()
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='WHITE', FillColor='WHITE')
+                    self.Hex[dRow][dCol].Hide()
+                dx += 2 * r
+                dCol += 1
+            dRow += 1
+            dy += R * 2 - R / 2
+            dx = r * dRow
+
+        dx = 0
+        dy = 0
+        dRow = 0
+        for row in map_type:
+            dCol = 0
+            for col in row:
+                # Draw TVS
+                Points = [(dx + r, dy + R / 2), (dx + r, dy - R / 2),
+                          (dx + 0, dy - R), (dx - r, dy - R / 2),
+                          (dx - r, dy + R / 2), (dx + 0, dy + R)]
+                if col == '1':
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText(str(TVS_type[0]), (dx, dy-R/9), Size = 9, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_SWISS, Weight = wx.FONTWEIGHT_BOLD, Position='cc')
+                elif col == '2':
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText(str(TVS_type[1]), (dx, dy), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_SWISS, Weight = wx.FONTWEIGHT_NORMAL, Position='cc')
+                elif col == '3':
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText(str(TVS_type[2]), (dx, dy), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_SWISS, Weight = wx.FONTWEIGHT_NORMAL, Position='cc')
+                elif col == '4':
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText(str(TVS_type[3]), (dx, dy), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_SWISS, Weight = wx.FONTWEIGHT_NORMAL, Position='cc')
+                elif col == '5':
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText(str(TVS_type[4]), (dx, dy), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_SWISS, Weight = wx.FONTWEIGHT_NORMAL, Position='cc')
                 dx += 2 * r
                 dCol += 1
             dRow += 1
@@ -505,12 +547,89 @@ class TVS1Panel(wx.Panel):
         self.Canvas.Zoom(1, (r*2*Csym+r*Csym, R*Csym*3/2))
 
     def onClick_Lbtn(self, Hex):
-        print("A '%s' Hex was hit, obj Index: (%i:%i) "%(Hex.FillColor, Hex.Index[0], Hex.Index[1]))
-        Hex.SetFillColor('Red')
-        self.Canvas.Draw(True)
+        #self.fTVS_change(Hex.Index, Hex.Year, 'left')
+        self.fTVS_change(Hex.Index, Hex.NumTVS, Hex.TVS_type, 'left')
 
     def onClick_Rbtn(self, Hex):
-        print("A %s Hex was hit, obj ID: %i"%(Hex.FillColor, id(Hex)))
+        #print("A %s Hex was hit, obj ID: %i"%(Hex.FillColor, id(Hex)))
+        self.fTVS_change(Hex.Index, Hex.NumTVS, Hex.TVS_type, 'right')
+
+    def fTVS_symetry(self):
+        Cn = int(AZ_dimension/2)
+        Sym = [0 for i in range(29)]
+        k=0
+        Sym[0] = [Cn, Cn], [Cn, Cn]
+        for j in range(Cn-1):
+            for i in range(1, Cn-j):
+                k+=1
+                Sym[k] = [Cn+j, Cn-j-i], [Cn-j, Cn+j+i], [Cn-i, Cn-j], [Cn+i, Cn+j],  [Cn-j-i, Cn+i], [Cn+j+i, Cn-i]
+        return Sym
+
+    def fTVS_change(self, Index, NumTVS, TVS_type, button):
+        dRow = Index[0]
+        dCol = Index[1]
+        TVS_index = [dRow, dCol]
+
+        Sym = self.fTVS_symetry()    # call fTVS_symetry function
+        for i in range(len(Sym)):   # walk by all Sym koeff list
+            if TVS_index in Sym[i]:         # looking up Symetry
+                for SymIndex in Sym[i]:     # get indexes of all symetry TVS from list
+                    dRow = SymIndex[0]
+                    dCol = SymIndex[1]
+
+                    # Modification MAP_YEAR
+                    if button == 'left':
+                        if map_year[dRow][dCol] == '1':
+                            Year = 2
+                            self.HexTextYear[dRow][dCol].SetText(str(Year))
+                            self.Hex[dRow][dCol].SetFillColor(color_year[1])
+                        elif map_year[dRow][dCol] == '2':
+                            Year = 3
+                            self.HexTextYear[dRow][dCol].SetText(str(Year))
+                            self.Hex[dRow][dCol].SetFillColor(color_year[2])
+                        elif map_year[dRow][dCol] == '3':
+                            Year = 1
+                            self.HexTextYear[dRow][dCol].SetText(str(Year))
+                            self.Hex[dRow][dCol].SetFillColor(color_year[0])
+                        map_year[dRow] = map_year[dRow][:dCol] + str(Year) + map_year[dRow][(dCol + 1):]
+
+                    # Modification MAP_TYPE
+                    if button == 'right':
+                        if map_type[dRow][dCol] == '1':
+                            if self.NumTVS > 1:
+                                Type = 2
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[1])
+                            else:
+                                Type = 1
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                        elif map_type[dRow][dCol] == '2':
+                            if self.NumTVS > 2:
+                                Type = 3
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[2])
+                            else:
+                                Type = 1
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                        elif map_type[dRow][dCol] == '3':
+                            if self.NumTVS > 3:
+                                Type = 4
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[3])
+                            else:
+                                Type = 1
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                        elif map_type[dRow][dCol] == '4':
+                            if self.NumTVS > 4:
+                                Type = 5
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[4])
+                            else:
+                                Type = 1
+                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                        elif map_type[dRow][dCol] == '5':
+                            Type = 1
+                            self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                        map_type[dRow] = map_type[dRow][:dCol] + str(Type) + map_type[dRow][(dCol + 1):]
+
+        self.Canvas.Draw(True)
+
 
 
 class TVS2Panel(wx.Panel):
@@ -551,8 +670,14 @@ class MainFrame(wx.Frame):
         self.mainMapsBook = wx.Notebook(self, -1, size=(1030, 1010))
 
         self.mainAZonePanel = AZonePanel(self.mainMapsBook, self.NumTVS, self.TVS_type)
-        self.mainTVSPanel = [TVS1Panel(self.mainMapsBook), TVS2Panel(self.mainMapsBook), TVS3Panel(self.mainMapsBook),
-                        TVS4Panel(self.mainMapsBook), TVS5Panel(self.mainMapsBook)]
+        self.mainTVSPanel = [TVS1Panel(self.mainMapsBook),
+                             TVS2Panel(self.mainMapsBook),
+                             TVS3Panel(self.mainMapsBook),
+                             TVS4Panel(self.mainMapsBook),
+                             TVS5Panel(self.mainMapsBook)]
+
+        self.mainTVSPanel[0].DrawMap(self.NumTVS, self.TVS_type)
+
 
         self.mainMapsBook.AddPage(self.mainAZonePanel, "Active ZONE map")
         self.mainMapsBook_NumPage = 0
@@ -591,8 +716,6 @@ class MainFrame(wx.Frame):
         for i in range(self.NumTVS):
             self.mainMapsBook.SetPageText(i+1, self.TVS_type[i])
 
-        self.mainMapsBook.AddPage(self.mainTVSPanel[4], '')
-
         self.mainMapsBook.ChangeSelection(0)
         #self.SetAutoLayout(True) # Auto Layout when window is resized
         self.Layout()
@@ -612,6 +735,7 @@ class MainFrame(wx.Frame):
                 #print(self.TVS_type[i])
         self.updateMapsBook()
 
+        self.mainTVSPanel[0].DrawMap(self.NumTVS, self.TVS_type)
 
 #    def ListenerCPanelPIN(self, arg1, arg2=None):
 #        self.NumPIN = arg1
