@@ -1,12 +1,15 @@
 import wx
-import wx.lib.colourdb
 import math
 from pubsub import pub
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
 
+
 AZ_dimension = 17
-TVS_SIZE = 32
-color_year = ['GREEN', 'YELLOW', 'PINK']
+max_NumTVS   = 5
+init_NumTVS  = 3
+max_NumPIN   = 8
+init_NumPIN  = 5
+
 map_year = [
     '-----------------',  # 1
     '---------111111--',  # 2
@@ -26,10 +29,6 @@ map_year = [
     '--111111---------',  # 16
     '-----------------'  # 17
 ]
-
-max_NumTVS = 5
-init_NumTVS = 3
-max_NumPIN = 8
 map_type = [
     '-----------------',  # 1
     '---------111111--',  # 2
@@ -50,83 +49,102 @@ map_type = [
     '-----------------'  # 17
 ]
 
+class TVSsize(object):
+    def __init__(self):
+        self.r = 35
+        self.R = 2 * self.r / math.sqrt(3)
+        self.color_year = ['SPRING GREEN', 'YELLOW', 'PINK']
+
 class ControlPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent, size=(220, 1010))
         self.sizer_Main = wx.BoxSizer(wx.VERTICAL)
+        self.sizer_Main.AddSpacer(2)
 
-        # 1-srt (Сaption Open/Save buttons)
-        self.Label_OpenSave = wx.StaticText(self, -1, "Open/Save AZ map:", (0, 0), (220, 20), wx.ALIGN_LEFT)
-        self.sizer_Main.Add(self.Label_OpenSave, 0, wx.LEFT | wx.RIGHT | wx.UP | wx.EXPAND, 5)
+        # 1-box (Open/Save buttons)
+        self.Staticbox_OpenSave = wx.StaticBox(self, -1, label="Open/Save AZ map")
+        self.sizer_OpenSave = wx.StaticBoxSizer(self.Staticbox_OpenSave, wx.HORIZONTAL)
 
-        # 2-srt (Open/Save buttons)
-        self.Btn_Open = wx.Button(self, -1, "Open", (0, 0), (100, 27))
-        self.Btn_Save = wx.Button(self, -1, "Save", (0, 0), (100, 27))
+        self.Btn_Open = wx.Button(self, -1, "Open")
+        self.Btn_Save = wx.Button(self, -1, "Save")
         self.Btn_Open.Bind(wx.EVT_BUTTON, self.click_Btn_Open)
         self.Btn_Save.Bind(wx.EVT_BUTTON, self.click_Btn_Save)
-        self.sizer_OpenSaveBtn = wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer_OpenSaveBtn.Add(self.Btn_Open, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 0)
-        self.sizer_OpenSaveBtn.Add(self.Btn_Save, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 0)
-        self.sizer_Main.Add(self.sizer_OpenSaveBtn, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
 
-        # 3-srt (Empty)
-        self.sizer_Main.AddSpacer(20)
+        self.sizer_OpenSave.Add(self.Btn_Open, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 5)
+        self.sizer_OpenSave.Add(self.Btn_Save, 1, wx.ALL | wx.ALIGN_CENTER | wx.EXPAND, 5)
+        self.sizer_Main.Add(self.sizer_OpenSave, 0, wx.ALL | wx.EXPAND, 5)
 
-        # 4-srt (Number of assemblies with SpinCtrl)
+        # 2-box (Settings: Symmetry, 1/6 Zoom)
+        self.Staticbox_Settings = wx.StaticBox(self, -1, label="AZ Settings")
+        self.sizer_Settings = wx.StaticBoxSizer(self.Staticbox_Settings, wx.HORIZONTAL)
+
+        self.CheckBox_Symmetry = wx.CheckBox(self, -1, label='Symmetry')
+        self.CheckBox_Symmetry.Bind(wx.EVT_CHECKBOX, self.click_CheckBox_Sym)
+        self.CheckBox_Symmetry.SetValue(True)
+        self.CheckBox_Zoom = wx.CheckBox(self, -1, label='1/6 Zoom')
+        self.CheckBox_Zoom.Bind(wx.EVT_CHECKBOX, self.click_CheckBox_Zoom)
+
+        self.sizer_Settings.Add(self.CheckBox_Symmetry, 1, wx.ALL | wx.ALIGN_LEFT, 5)
+        self.sizer_Settings.Add(self.CheckBox_Zoom, 1, wx.ALL | wx.ALIGN_LEFT, 5)
+        self.sizer_Main.Add(self.sizer_Settings, 0, wx.ALL | wx.EXPAND, 5)
+
+
+        # 3-box (Assembly types)
+        self.Staticbox_AssemblyTypes = wx.StaticBox(self, -1, label="Assembly types")
+        self.sizer_AssemblyTypes = wx.StaticBoxSizer(self.Staticbox_AssemblyTypes, wx.VERTICAL)
+        self.sizer_NumTVS = wx.BoxSizer(wx.HORIZONTAL)
+
         self.maxSpinCtrl_NumTVS = max_NumTVS
-        self.Label_NumTVS = wx.StaticText(self, -1, "Num of Assembly types:", (0, 0), (140, 20), wx.ALIGN_LEFT)
+        self.Label_NumTVS = wx.StaticText(self, -1, "N of Assembly types:", (0, 0), (120, 20), wx.ALIGN_LEFT)
         self.SpinCtrl_NumTVS = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumTVS, initial=init_NumTVS)
         self.SpinCtrl_NumTVS.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumTVS)
-        self.sizer_NumTVS = wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer_NumTVS.Add(self.Label_NumTVS, 1, wx.ALL | wx.ALIGN_LEFT, 0)
-        self.sizer_NumTVS.Add(self.SpinCtrl_NumTVS, 1, wx.ALL | wx.EXPAND, 0)
-        self.sizer_Main.Add(self.sizer_NumTVS, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
 
-        # 5-srt (Empty)
-        self.sizer_Main.AddSpacer(6)
+        self.sizer_NumTVS.Add(self.Label_NumTVS, 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+        self.sizer_NumTVS.Add(self.SpinCtrl_NumTVS, 1, wx.ALL | wx.EXPAND, 5)
+        self.sizer_AssemblyTypes.Add(self.sizer_NumTVS, 1, wx.ALL | wx.EXPAND, 0)
 
-        # 6-srt TextCtrl with names of TVSs
         self.TVS_type = ['XXXXXX' for i in range(self.maxSpinCtrl_NumTVS)]
         self.TVS_type[0] = 'E495A18'
         self.TVS_type[1] = 'E460A06'
         self.TVS_type[2] = 'E445A22'
         self.TextCtrl_TVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
-        self.Btn_EditTVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
+        #self.Btn_EditTVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
         self.sizer_TVS_name = [0 for i in range(self.maxSpinCtrl_NumTVS)]
         self.TVSid = [0 for i in range(self.maxSpinCtrl_NumTVS)]
 
         for i in range(self.maxSpinCtrl_NumTVS):
             self.TVSid[i] = wx.NewId()
-            self.TextCtrl_TVS_name[i] = wx.TextCtrl(self, self.TVSid[i], self.TVS_type[i], (0, 0), (120, 20))
-            self.TextCtrl_TVS_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_TVS_name)
-            self.Btn_EditTVS_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (100, 27))
+            self.TextCtrl_TVS_name[i] = wx.TextCtrl(self, self.TVSid[i], self.TVS_type[i], (0, 0), (120, 20), style=wx.TE_PROCESS_ENTER)
+            self.TextCtrl_TVS_name[i].Bind(wx.EVT_TEXT_ENTER, self.onKeyTyped_TVS_name)
+            #self.Btn_EditTVS_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (60, 27))
             self.sizer_TVS_name[i] = wx.BoxSizer(wx.HORIZONTAL)
-            self.sizer_TVS_name[i].Add(self.TextCtrl_TVS_name[i], 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
-            self.sizer_TVS_name[i].AddSpacer(20)
-            self.sizer_TVS_name[i].Add(self.Btn_EditTVS_name[i], 1, wx.ALL | wx.EXPAND, 0)
-            self.sizer_Main.Add(self.sizer_TVS_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+            self.sizer_TVS_name[i].Add(self.TextCtrl_TVS_name[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+            #self.sizer_TVS_name[i].AddSpacer(20)
+            #self.sizer_TVS_name[i].Add(self.Btn_EditTVS_name[i], 0, wx.LEFT | wx.ALIGN_RIGHT, 5)
+            self.sizer_TVS_name[i].SetMinSize(120,27)
+            #self.sizer_AssemblyTypes.Add(self.sizer_TVS_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+            self.sizer_AssemblyTypes.Add(self.sizer_TVS_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
         # Hide extra TVSs
         for i in range(self.SpinCtrl_NumTVS.GetValue(), self.maxSpinCtrl_NumTVS):
-            self.sizer_TVS_name[i].Hide(self.TextCtrl_TVS_name[i])
-            self.sizer_TVS_name[i].Hide(self.Btn_EditTVS_name[i])
+            #self.sizer_Main.Hide(self.sizer_TVS_name[i])
+            self.sizer_AssemblyTypes.Hide(self.sizer_TVS_name[i])
 
-        # 7-srt (Empty)
-        self.sizer_Main.AddSpacer(20)
+        self.sizer_Main.Add(self.sizer_AssemblyTypes, 0, wx.ALL | wx.EXPAND, 5)
 
-        # 8-srt (Number of pins with SpinCtrl)
-        self.maxSpinCtrl_NumPIN = max_NumPIN
-        self.Label_NumPIN = wx.StaticText(self, -1, "Number of pin types:", (0, 0), (140, 20), wx.ALIGN_LEFT)
-        self.SpinCtrl_NumPIN = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumPIN, initial=5)
-        self.SpinCtrl_NumPIN.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumPIN)
+        # 4-box (Pin types)
+        self.Staticbox_PinTypes = wx.StaticBox(self, -1, label="Pin types")
+        self.sizer_PinTypes = wx.StaticBoxSizer(self.Staticbox_PinTypes, wx.VERTICAL)
         self.sizer_NumPIN = wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer_NumPIN.Add(self.Label_NumPIN, 1, wx.ALL | wx.ALIGN_LEFT, 0)
-        self.sizer_NumPIN.Add(self.SpinCtrl_NumPIN, 1, wx.ALL | wx.EXPAND, 0)
-        self.sizer_Main.Add(self.sizer_NumPIN, 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
 
-        # 9-srt (Empty)
-        self.sizer_Main.AddSpacer(6)
+        self.maxSpinCtrl_NumPIN = max_NumPIN
+        self.Label_NumPIN = wx.StaticText(self, -1, "N of pin types:", (0, 0), (120, 20), wx.ALIGN_LEFT)
+        self.SpinCtrl_NumPIN = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.maxSpinCtrl_NumPIN, initial=init_NumPIN)
+        self.SpinCtrl_NumPIN.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumPIN)
 
-        # 10-srt TextCtrl with names of TVSs
+        self.sizer_NumPIN.Add(self.Label_NumPIN, 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+        self.sizer_NumPIN.Add(self.SpinCtrl_NumPIN, 1, wx.ALL | wx.EXPAND, 5)
+        self.sizer_PinTypes.Add(self.sizer_NumPIN, 1, wx.ALL | wx.EXPAND, 0)
+
         self.PIN_type = ['xxxxxx' for i in range(self.maxSpinCtrl_NumPIN)]
         self.PIN_type[0] = 'U49P50'
         self.PIN_type[1] = 'U44P50'
@@ -140,16 +158,19 @@ class ControlPanel(wx.Panel):
             self.PINid[i] = wx.NewId()
             self.TextCtrl_PIN_name[i] = wx.TextCtrl(self, self.PINid[i], self.PIN_type[i], (0, 0), (120, 20))
             self.TextCtrl_PIN_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_PIN_name)
-            self.Btn_EditPIN_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (100, 27))
+            self.Btn_EditPIN_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (60, 27))
             self.sizer_PIN_name[i] = wx.BoxSizer(wx.HORIZONTAL)
-            self.sizer_PIN_name[i].Add(self.TextCtrl_PIN_name[i], 1, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
-            self.sizer_PIN_name[i].AddSpacer(20)
-            self.sizer_PIN_name[i].Add(self.Btn_EditPIN_name[i], 1, wx.ALL | wx.EXPAND, 0)
-            self.sizer_Main.Add(self.sizer_PIN_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
-        # Hide extra TVSs
+            self.sizer_PIN_name[i].Add(self.TextCtrl_PIN_name[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
+            #self.sizer_PIN_name[i].AddSpacer(10)
+            self.sizer_PIN_name[i].Add(self.Btn_EditPIN_name[i], 0, wx.LEFT | wx.ALIGN_RIGHT, 5)
+            self.sizer_PIN_name[i].SetMinSize(190,27)
+            self.sizer_PinTypes.Add(self.sizer_PIN_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
+        # Hide extra PINs
         for i in range(self.SpinCtrl_NumPIN.GetValue(), self.maxSpinCtrl_NumPIN):
-            self.sizer_PIN_name[i].Hide(self.TextCtrl_PIN_name[i])
-            self.sizer_PIN_name[i].Hide(self.Btn_EditPIN_name[i])
+            #self.sizer_Main.Hide(self.sizer_PIN_name[i])
+            self.sizer_PinTypes.Hide(self.sizer_PIN_name[i])
+
+        self.sizer_Main.Add(self.sizer_PinTypes, 0, wx.ALL | wx.EXPAND, 5)
 
         self.SetSizer(self.sizer_Main)
         self.Layout()
@@ -166,18 +187,22 @@ class ControlPanel(wx.Panel):
             if dlg.ShowModal() == wx.ID_OK:
                 print(dlg.GetPath())
                 with open(dlg.GetPath(), 'w') as file:
-                    for row in map_year:
-                        file.writelines(row)
+                    for i in range(AZ_dimension):
+                        for j in range(AZ_dimension):
+                            if map_type[i][j] == '-': saveTVStype = '------'
+                            else:  saveTVStype = self.TextCtrl_TVS_name[int(map_type[i][j])-1].GetValue()
+                            file.write(map_year[i][j]+'_'+saveTVStype+' ')
                         file.writelines('\n')
+
 
     def click_SpinCtrl_NumTVS(self, event):
         for i in range(self.SpinCtrl_NumTVS.GetValue()):
             self.sizer_TVS_name[i].Show(self.TextCtrl_TVS_name[i])
-            self.sizer_TVS_name[i].Show(self.Btn_EditTVS_name[i])
+            #self.sizer_TVS_name[i].Show(self.Btn_EditTVS_name[i])
         for i in range(self.SpinCtrl_NumTVS.GetValue(), self.maxSpinCtrl_NumTVS):
             self.sizer_TVS_name[i].Hide(self.TextCtrl_TVS_name[i])
-            self.sizer_TVS_name[i].Hide(self.Btn_EditTVS_name[i])
-        self.Layout()
+            #self.sizer_TVS_name[i].Hide(self.Btn_EditTVS_name[i])
+        #self.Layout()
         pub.sendMessage('CPanel TVS', arg1=self.SpinCtrl_NumTVS.GetValue(), arg2=self.TVS_type)
 
     def onKeyTyped_TVS_name(self, event):
@@ -195,14 +220,23 @@ class ControlPanel(wx.Panel):
         for i in range(self.SpinCtrl_NumPIN.GetValue(), self.maxSpinCtrl_NumPIN):
             self.sizer_PIN_name[i].Hide(self.TextCtrl_PIN_name[i])
             self.sizer_PIN_name[i].Hide(self.Btn_EditPIN_name[i])
-        self.Layout()
         pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
+        self.Layout()
 
     def onKeyTyped_PIN_name(self, event):
-        for i in range(max_NumPIN):
-            if self.PINid[i] == event.GetId():
-                self.PIN_type[i] = event.GetString()
-                pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
+        pass
+        #for i in range(max_NumPIN):
+        #    if self.PINid[i] == event.GetId():
+        #        self.PIN_type[i] = event.GetString()
+        #        pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
+
+    def click_CheckBox_Sym(self, event):
+        pub.sendMessage('CPanel Symmetry', arg1=self.CheckBox_Symmetry.GetValue())
+
+    def click_CheckBox_Zoom(self, event):
+        pub.sendMessage('CPanel Zoom', arg1=self.CheckBox_Zoom.GetValue())
+
+
 
 class SelectObject(object):
     def __init__(self, btn, clickXY, NumTVS):
@@ -388,7 +422,7 @@ class PaintTVS(object):
                 dCol += 1
             dRow += 1
 
-class AZonePanel(wx.Panel):
+class OLD_AZonePanel(wx.Panel):
     def __init__(self, parent, NumTVS, TVS_type):
         wx.Panel.__init__(self, parent)
         self.SetBackgroundColour('WHITE')
@@ -444,23 +478,62 @@ class AZonePanel(wx.Panel):
         # Painting through Buffer
         self.initBufferAZ()
 
-class TVS1Panel(wx.Panel):
+
+#class TVS1Panel(wx.Panel):
+class AZonePanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
-        #w, h = parent.GetClientSize()
         w = 1000
         h = 940
+        self.IS_Symmetry = True
 
         # Add the Canvas
         self.Canvas = FloatCanvas.FloatCanvas(self,-1,(w, h), ProjectionFun = None, Debug = 0, BackgroundColor = 'WHITE')
 
-
-    def DrawMap(self, NumTVS, TVS_type):
-        print('NumTVS, TVS_type:', NumTVS, TVS_type)
+    def SaveInfoTVS(self, NumTVS, TVS_type):
         self.NumTVS = NumTVS
         self.TVS_type = TVS_type
-        r = 35
-        R = 2 * r / math.sqrt(3)
+
+    def InfoNumTVS(self):
+        return self.NumTVS
+
+    def InfoTVStype(self):
+        return self.TVS_type
+
+    def SymmetrySave(self, do):
+        self.IS_Symmetry = do
+
+
+    def Zoom(self, do):
+        MainTVSs = ((8, 8), (8, 9), (8, 10), (8, 11), (8, 12), (8, 13), (8, 14), (9, 9), (9, 10), (9, 11), (9, 12), (9, 13),
+                         (9, 14), (10, 9), (10, 10), (10, 11), (10, 12), (10, 13), (11, 9), (11, 10), (11, 11), (11, 12), (12, 9),
+                         (12, 10), (12, 11), (13, 9), (13, 10), (14, 9))
+        for row in range(AZ_dimension):
+            for col in range(AZ_dimension):
+                if do == 'zoomIn':
+                    All_index = (row, col)
+                    if All_index not in MainTVSs:
+                        self.Hex[row][col].Hide()
+                        if self.HexTextYear[row][col]: self.HexTextYear[row][col].SetColor('WHITE')
+                        if self.HexTextType[row][col]: self.HexTextType[row][col].SetColor('WHITE')
+                elif do == 'zoomOut':
+                    if map_year[row][col] != '-':
+                        self.Hex[row][col].Show()
+                        if self.HexTextYear[row][col]: self.HexTextYear[row][col].SetColor('BLACK')
+                        if self.HexTextType[row][col]: self.HexTextType[row][col].SetColor('BLACK')
+
+        TVS = TVSsize()
+        Csym = int(AZ_dimension / 2)
+        if do == 'zoomIn':
+            self.Canvas.Zoom(1.8, (TVS.r*2*Csym+TVS.r*Csym+TVS.r*6.5, TVS.R*Csym*3/2+TVS.R*4.5))
+        elif do == 'zoomOut':
+            self.Canvas.Zoom(1/1.8, (TVS.r * 2 * Csym + TVS.r * Csym, TVS.R * Csym * 3 / 2))
+
+    def DrawMap(self):
+        TVS = TVSsize()
+        r = TVS.r
+        R = TVS.R
+        color_year = TVS.color_year
         dx = 0
         dy = 0
         self.Hex = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
@@ -480,8 +553,6 @@ class TVS1Panel(wx.Panel):
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
                     self.Hex[dRow][dCol].Index = (dRow, dCol)
-                    self.Hex[dRow][dCol].NumTVS = NumTVS
-                    self.Hex[dRow][dCol].TVS_type = TVS_type
                     self.HexTextYear[dRow][dCol] = self.Canvas.AddText('1', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
                                                                        Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 elif col == '2':
@@ -489,8 +560,6 @@ class TVS1Panel(wx.Panel):
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
                     self.Hex[dRow][dCol].Index = (dRow, dCol)
-                    self.Hex[dRow][dCol].NumTVS = NumTVS
-                    self.Hex[dRow][dCol].TVS_type = TVS_type
                     self.HexTextYear[dRow][dCol] = self.Canvas.AddText('2', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
                                                                        Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 elif col == '3':
@@ -498,8 +567,6 @@ class TVS1Panel(wx.Panel):
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_RIGHT_DOWN, self.onClick_Rbtn)
                     self.Hex[dRow][dCol].Index = (dRow, dCol)
-                    self.Hex[dRow][dCol].NumTVS = NumTVS
-                    self.Hex[dRow][dCol].TVS_type = TVS_type
                     self.HexTextYear[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
                                                                        Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 else:
@@ -511,6 +578,7 @@ class TVS1Panel(wx.Panel):
             dy += R * 2 - R / 2
             dx = r * dRow
 
+        TVS_type = self.InfoTVStype()
         dx = 0
         dy = 0
         dRow = 0
@@ -546,91 +614,132 @@ class TVS1Panel(wx.Panel):
         Csym = int(AZ_dimension / 2)
         self.Canvas.Zoom(1, (r*2*Csym+r*Csym, R*Csym*3/2))
 
+
     def onClick_Lbtn(self, Hex):
-        #self.fTVS_change(Hex.Index, Hex.Year, 'left')
-        self.fTVS_change(Hex.Index, Hex.NumTVS, Hex.TVS_type, 'left')
+        self.fTVS_change(Hex.Index, 'left')
+        print(Hex.Index)
 
     def onClick_Rbtn(self, Hex):
-        #print("A %s Hex was hit, obj ID: %i"%(Hex.FillColor, id(Hex)))
-        self.fTVS_change(Hex.Index, Hex.NumTVS, Hex.TVS_type, 'right')
+        self.fTVS_change(Hex.Index, 'right')
 
     def fTVS_symetry(self):
         Cn = int(AZ_dimension/2)
         Sym = [0 for i in range(29)]
         k=0
-        Sym[0] = [Cn, Cn], [Cn, Cn]
+        Sym[0] = [[Cn, Cn]]
         for j in range(Cn-1):
             for i in range(1, Cn-j):
                 k+=1
-                Sym[k] = [Cn+j, Cn-j-i], [Cn-j, Cn+j+i], [Cn-i, Cn-j], [Cn+i, Cn+j],  [Cn-j-i, Cn+i], [Cn+j+i, Cn-i]
+                Sym[k] = [[Cn+j, Cn-j-i], [Cn-j, Cn+j+i], [Cn-i, Cn-j], [Cn+i, Cn+j],  [Cn-j-i, Cn+i], [Cn+j+i, Cn-i]]
         return Sym
 
-    def fTVS_change(self, Index, NumTVS, TVS_type, button):
+    def fTVS_change(self, Index, button):
         dRow = Index[0]
         dCol = Index[1]
         TVS_index = [dRow, dCol]
 
-        Sym = self.fTVS_symetry()    # call fTVS_symetry function
-        for i in range(len(Sym)):   # walk by all Sym koeff list
-            if TVS_index in Sym[i]:         # looking up Symetry
-                for SymIndex in Sym[i]:     # get indexes of all symetry TVS from list
-                    dRow = SymIndex[0]
-                    dCol = SymIndex[1]
+        TVS = TVSsize()
+        color_year = TVS.color_year
 
-                    # Modification MAP_YEAR
-                    if button == 'left':
-                        if map_year[dRow][dCol] == '1':
-                            Year = 2
-                            self.HexTextYear[dRow][dCol].SetText(str(Year))
-                            self.Hex[dRow][dCol].SetFillColor(color_year[1])
-                        elif map_year[dRow][dCol] == '2':
-                            Year = 3
-                            self.HexTextYear[dRow][dCol].SetText(str(Year))
-                            self.Hex[dRow][dCol].SetFillColor(color_year[2])
-                        elif map_year[dRow][dCol] == '3':
-                            Year = 1
-                            self.HexTextYear[dRow][dCol].SetText(str(Year))
-                            self.Hex[dRow][dCol].SetFillColor(color_year[0])
-                        map_year[dRow] = map_year[dRow][:dCol] + str(Year) + map_year[dRow][(dCol + 1):]
+        NumTVS = self.InfoNumTVS()
+        TVS_type = self.InfoTVStype()
 
-                    # Modification MAP_TYPE
-                    if button == 'right':
-                        if map_type[dRow][dCol] == '1':
-                            if self.NumTVS > 1:
-                                Type = 2
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[1])
-                            else:
-                                Type = 1
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
-                        elif map_type[dRow][dCol] == '2':
-                            if self.NumTVS > 2:
-                                Type = 3
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[2])
-                            else:
-                                Type = 1
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
-                        elif map_type[dRow][dCol] == '3':
-                            if self.NumTVS > 3:
-                                Type = 4
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[3])
-                            else:
-                                Type = 1
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
-                        elif map_type[dRow][dCol] == '4':
-                            if self.NumTVS > 4:
-                                Type = 5
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[4])
-                            else:
-                                Type = 1
-                                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
-                        elif map_type[dRow][dCol] == '5':
-                            Type = 1
-                            self.HexTextType[dRow][dCol].SetText(TVS_type[0])
-                        map_type[dRow] = map_type[dRow][:dCol] + str(Type) + map_type[dRow][(dCol + 1):]
+        if self.IS_Symmetry:
+            Sym = self.fTVS_symetry()    # call fTVS_symetry function
+            for i in range(len(Sym)):  # walk by all Sym koeff list
+                if TVS_index in Sym[i]:  # looking up Symetry
+                    for SymIndex in Sym[i]:  # get indexes of all symetry TVS from list
+                        dRow = SymIndex[0]
+                        dCol = SymIndex[1]
+                        self.ModifyMapYear(button, dRow, dCol, color_year)
+                        self.ModifyMapType(button, dRow, dCol, NumTVS, TVS_type)
+        else:
+            self.ModifyMapYear(button, dRow, dCol, color_year)
+            self.ModifyMapType(button, dRow, dCol, NumTVS, TVS_type)
 
         self.Canvas.Draw(True)
 
 
+    def ModifyMapYear(self, button, dRow, dCol, color_year):
+        # Modification MAP_YEAR
+        if button == 'left':
+            if map_year[dRow][dCol] == '1':
+                Year = 2
+                self.HexTextYear[dRow][dCol].SetText(str(Year))
+                self.Hex[dRow][dCol].SetFillColor(color_year[1])
+            elif map_year[dRow][dCol] == '2':
+                Year = 3
+                self.HexTextYear[dRow][dCol].SetText(str(Year))
+                self.Hex[dRow][dCol].SetFillColor(color_year[2])
+            elif map_year[dRow][dCol] == '3':
+                Year = 1
+                self.HexTextYear[dRow][dCol].SetText(str(Year))
+                self.Hex[dRow][dCol].SetFillColor(color_year[0])
+            map_year[dRow] = map_year[dRow][:dCol] + str(Year) + map_year[dRow][(dCol + 1):]
+
+    def ModifyMapType(self, button, dRow, dCol, NumTVS, TVS_type):
+        # Modification MAP_TYPE
+        if button == 'right':
+            if map_type[dRow][dCol] == '1':
+                if NumTVS > 1:
+                    Type = 2
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[1])
+                else:
+                    Type = 1
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+            elif map_type[dRow][dCol] == '2':
+                if NumTVS > 2:
+                    Type = 3
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[2])
+                else:
+                    Type = 1
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+            elif map_type[dRow][dCol] == '3':
+                if NumTVS > 3:
+                    Type = 4
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[3])
+                else:
+                    Type = 1
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+            elif map_type[dRow][dCol] == '4':
+                if NumTVS > 4:
+                    Type = 5
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[4])
+                else:
+                    Type = 1
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+            elif map_type[dRow][dCol] == '5':
+                Type = 1
+                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+            map_type[dRow] = map_type[dRow][:dCol] + str(Type) + map_type[dRow][(dCol + 1):]
+
+
+    def modifyTVSname(self):
+        TVS_type = self.InfoTVStype()
+        dRow = 0
+        for row in map_type:
+            dCol = 0
+            for col in row:
+                # Draw TVS
+                if col == '1':
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                elif col == '2':
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[1])
+                elif col == '3':
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[2])
+                elif col == '4':
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[3])
+                elif col == '5':
+                    self.HexTextType[dRow][dCol].SetText(TVS_type[4])
+                dCol += 1
+            dRow += 1
+
+        self.Canvas.Draw(True)
+
+
+class TVS1Panel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent, size=(0, 0))
 
 class TVS2Panel(wx.Panel):
     def __init__(self, parent):
@@ -652,7 +761,7 @@ class TVS5Panel(wx.Panel):
 
 class MainFrame(wx.Frame):
     def __init__(self):
-        wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1250, 1010))
+        wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1250, 1015))
 
         self.NumTVS = init_NumTVS     # initial (default) value number of TVSs = 3
         self.TVS_type = ['XXXXXX' for i in range(max_NumTVS)]
@@ -667,16 +776,20 @@ class MainFrame(wx.Frame):
         self.PIN_type[2] = 'U40P50'
 
         self.mainControlPanel = ControlPanel(self)
-        self.mainMapsBook = wx.Notebook(self, -1, size=(1030, 1010))
+        self.ColorPanel = wx.Panel(self)
 
-        self.mainAZonePanel = AZonePanel(self.mainMapsBook, self.NumTVS, self.TVS_type)
+        self.mainMapsBook = wx.Notebook(self.ColorPanel, -1, size=(1030, 1010))
+
+        self.sizerColorPanel = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizerColorPanel.Add(self.mainMapsBook, 1, wx.ALL | wx.EXPAND, 5)
+        self.ColorPanel.SetSizer(self.sizerColorPanel)
+
+        self.mainAZonePanel = AZonePanel(self.mainMapsBook)
         self.mainTVSPanel = [TVS1Panel(self.mainMapsBook),
                              TVS2Panel(self.mainMapsBook),
                              TVS3Panel(self.mainMapsBook),
                              TVS4Panel(self.mainMapsBook),
                              TVS5Panel(self.mainMapsBook)]
-
-        self.mainTVSPanel[0].DrawMap(self.NumTVS, self.TVS_type)
 
 
         self.mainMapsBook.AddPage(self.mainAZonePanel, "Active ZONE map")
@@ -684,18 +797,22 @@ class MainFrame(wx.Frame):
 
         self.sizerFrame = wx.BoxSizer(wx.HORIZONTAL)
         self.sizerFrame.Add(self.mainControlPanel, 0, wx.EXPAND)
-        self.sizerFrame.Add(self.mainMapsBook, 1, wx.EXPAND)
+        self.sizerFrame.Add(self.ColorPanel, 1, wx.EXPAND)
         self.SetSizer(self.sizerFrame)
 
+
         self.NumTVS = init_NumTVS
-        #w, h = self.mainMapsBook.GetPage(0).GetClientSize()
+        self.mainAZonePanel.SaveInfoTVS(self.NumTVS, self.TVS_type)
+        self.mainAZonePanel.DrawMap()
 
         self.updateMapsBook()
 
         # Listen change in num TVS
+        pub.subscribe(self.listenerCPanelSymmetry, 'CPanel Symmetry')
+        pub.subscribe(self.listenerCPanelZoom, 'CPanel Zoom')
         pub.subscribe(self.listenerCPanelTVS, 'CPanel TVS')
-
         #pub.subscribe(self.ListenerCPanelPIN, 'CPanel PIN')
+
 
     def updateMapsBook(self):
         # If Add TVS
@@ -703,7 +820,6 @@ class MainFrame(wx.Frame):
             for i in range(self.mainMapsBook_NumPage, self.NumTVS, 1):
                 self.mainMapsBook.AddPage(self.mainTVSPanel[i], self.TVS_type[i])
                 self.mainMapsBook_NumPage += 1
-            self.mainMapsBook.ChangeSelection(self.mainMapsBook_NumPage)
         # If Remove TVS
         if self.NumTVS < self.mainMapsBook_NumPage:
             if self.mainMapsBook.GetSelection() == self.mainMapsBook_NumPage:
@@ -711,20 +827,14 @@ class MainFrame(wx.Frame):
             for i in range(self.mainMapsBook_NumPage, self.NumTVS, -1):
                 self.mainMapsBook.RemovePage(i)
                 self.mainMapsBook_NumPage -= 1
-            self.mainMapsBook.ChangeSelection(self.mainMapsBook_NumPage)
 
         for i in range(self.NumTVS):
             self.mainMapsBook.SetPageText(i+1, self.TVS_type[i])
 
-        self.mainMapsBook.ChangeSelection(0)
+        #self.mainMapsBook.ChangeSelection(0)
         #self.SetAutoLayout(True) # Auto Layout when window is resized
         self.Layout()
 
-        clientDC = wx.ClientDC(self)
-        w, h = self.GetClientSize()
-        w = 500
-        h = 500
-        #InitBuffer(clientDC, w, h, self.NumTVS, self.TVS_type)
 
     def listenerCPanelTVS(self, arg1, arg2=None):
         self.NumTVS = arg1
@@ -735,7 +845,21 @@ class MainFrame(wx.Frame):
                 #print(self.TVS_type[i])
         self.updateMapsBook()
 
-        self.mainTVSPanel[0].DrawMap(self.NumTVS, self.TVS_type)
+        self.mainAZonePanel.SaveInfoTVS(self.NumTVS, self.TVS_type)
+        self.mainAZonePanel.modifyTVSname()
+
+
+    def listenerCPanelSymmetry(self, arg1, arg2=None):
+        IsSymmetry = arg1
+        self.mainAZonePanel.SymmetrySave(IsSymmetry)
+
+    def listenerCPanelZoom(self, arg1, arg2=None):
+        IsZoom = arg1
+        if IsZoom:
+            self.mainAZonePanel.Zoom('zoomIn')
+        else:
+            self.mainAZonePanel.Zoom('zoomOut')
+
 
 #    def ListenerCPanelPIN(self, arg1, arg2=None):
 #        self.NumPIN = arg1
