@@ -2,13 +2,14 @@ import wx
 import math
 from pubsub import pub
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
+import wx.propgrid as wxpg
 
 
 AZ_dimension = 17
 max_NumTVS   = 5
 init_NumTVS  = 3
 max_NumPIN   = 8
-init_NumPIN  = 5
+init_NumPIN  = 4
 
 map_year = [
     '-----------------',  # 1
@@ -77,6 +78,15 @@ for i in range(max_NumTVS):
         '-11111111111-----------',  # 22
         '-----------------------'  # 23
 ]
+
+max_Material = 100
+Material = [0 for i in range(max_Material)]
+Material[0] = {'Name': 'water', 'Inv': ['1001.03c', '8016.03c'], 'Val': ['2', '1'], 'Den': '-0.7122', 'Tmp': '573'}
+Material[1] = {'Name': 'ZrNb_clad', 'Inv': ['40000.06c', '41093.06c'], 'Val': ['-0.99', '-0.01'], 'Den': '-6.55', 'Tmp': '613'}
+for Mat in Material:
+    if Mat !=0:
+        print(Mat['Name'], Mat['Inv'][0], Mat['Val'][0])
+
 
 
 class TVSsize(object):
@@ -182,9 +192,11 @@ class ControlPanel(wx.Panel):
         self.sizer_PinTypes.Add(self.sizer_NumPIN, 1, wx.ALL | wx.EXPAND, 0)
 
         self.PIN_type = ['xxxxxx' for i in range(self.maxSpinCtrl_NumPIN)]
-        self.PIN_type[0] = 'U49P50'
-        self.PIN_type[1] = 'U44P50'
-        self.PIN_type[2] = 'U40P50'
+        self.PIN_type[0] = 'p49'
+        self.PIN_type[1] = 'p44'
+        self.PIN_type[2] = 'p36g5'
+        self.PIN_type[3] = 'p36g8'
+        self.RadioBtn_PIN_num = [0 for i in range(self.maxSpinCtrl_NumPIN)]
         self.TextCtrl_PIN_name = [0 for i in range(self.maxSpinCtrl_NumPIN)]
         self.Btn_EditPIN_name = [0 for i in range(self.maxSpinCtrl_NumPIN)]
         self.sizer_PIN_name = [0 for i in range(self.maxSpinCtrl_NumPIN)]
@@ -192,21 +204,36 @@ class ControlPanel(wx.Panel):
 
         for i in range(self.maxSpinCtrl_NumPIN):
             self.PINid[i] = wx.NewId()
-            self.TextCtrl_PIN_name[i] = wx.TextCtrl(self, self.PINid[i], self.PIN_type[i], (0, 0), (120, 20))
+            self.RadioBtn_PIN_num[i] = wx.RadioButton(self, self.PINid[i], str(i+1))
+            self.RadioBtn_PIN_num[i].Bind(wx.EVT_RADIOBUTTON, self.onRadioBtn_Cliked)
+            self.TextCtrl_PIN_name[i] = wx.TextCtrl(self, self.PINid[i], self.PIN_type[i], (0, 0), (93, 20))
             self.TextCtrl_PIN_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_PIN_name)
             self.Btn_EditPIN_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (60, 27))
             self.sizer_PIN_name[i] = wx.BoxSizer(wx.HORIZONTAL)
-            self.sizer_PIN_name[i].Add(self.TextCtrl_PIN_name[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 5)
-            #self.sizer_PIN_name[i].AddSpacer(10)
+            self.sizer_PIN_name[i].Add(self.RadioBtn_PIN_num[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+            self.sizer_PIN_name[i].Add(self.TextCtrl_PIN_name[i], 0, wx.RIGHT | wx.LEFT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
             self.sizer_PIN_name[i].Add(self.Btn_EditPIN_name[i], 0, wx.LEFT | wx.ALIGN_RIGHT, 5)
-            self.sizer_PIN_name[i].SetMinSize(190,27)
+            #self.sizer_PIN_name[i].SetMinSize(190,27)
             self.sizer_PinTypes.Add(self.sizer_PIN_name[i], 0, wx.LEFT | wx.RIGHT | wx.EXPAND, 5)
         # Hide extra PINs
         for i in range(self.SpinCtrl_NumPIN.GetValue(), self.maxSpinCtrl_NumPIN):
-            #self.sizer_Main.Hide(self.sizer_PIN_name[i])
             self.sizer_PinTypes.Hide(self.sizer_PIN_name[i])
 
+        self.RadioBtn_PIN_num[0].SetValue(True)
+
         self.sizer_Main.Add(self.sizer_PinTypes, 0, wx.ALL | wx.EXPAND, 5)
+
+        # 5-box (Materials)
+        self.Staticbox_Materials = wx.StaticBox(self, -1, label="Materials")
+        self.sizer_Materials = wx.StaticBoxSizer(self.Staticbox_Materials, wx.HORIZONTAL)
+
+        self.Btn_EditMat = wx.Button(self, -1, "Edit Materials")
+        self.Btn_EditMat.Bind(wx.EVT_BUTTON, self.click_Btn_EditMat)
+
+        self.sizer_Materials.Add(self.Btn_EditMat, 0, wx.ALL | wx.ALIGN_LEFT, 5)
+        self.sizer_Main.Add(self.sizer_Materials, 0, wx.ALL | wx.EXPAND, 5)
+
+
 
         self.SetSizer(self.sizer_Main)
         self.Layout()
@@ -231,16 +258,18 @@ class ControlPanel(wx.Panel):
                         file.writelines('\n')
                     file.writelines('\n')
 
-                    for i in range(TVS_dimension):
-                        for j in range(TVS_dimension):
-                            file.write(map_PIN_type[0][i][j])
+                    for k in range(self.SpinCtrl_NumTVS.GetValue()):
+                        for i in range(TVS_dimension):
+                            for j in range(TVS_dimension):
+                                file.write(map_PIN_type[k][i][j])
+                            file.writelines('\n')
                         file.writelines('\n')
 
-                    file.writelines('\n')
-                    for i in range(TVS_dimension):
-                        for j in range(TVS_dimension):
-                            file.write(map_PIN_type[1][i][j])
-                        file.writelines('\n')
+    def click_CheckBox_Sym(self, event):
+        pub.sendMessage('CPanel Symmetry', arg1=self.CheckBox_Symmetry.GetValue())
+
+    def click_CheckBox_Zoom(self, event):
+        pub.sendMessage('CPanel Zoom', arg1=self.CheckBox_Zoom.GetValue())
 
 
     def click_SpinCtrl_NumTVS(self, event):
@@ -263,13 +292,28 @@ class ControlPanel(wx.Panel):
 
     def click_SpinCtrl_NumPIN(self, event):
         for i in range(self.SpinCtrl_NumPIN.GetValue()):
+            self.sizer_PIN_name[i].Show(self.RadioBtn_PIN_num[i])
             self.sizer_PIN_name[i].Show(self.TextCtrl_PIN_name[i])
             self.sizer_PIN_name[i].Show(self.Btn_EditPIN_name[i])
         for i in range(self.SpinCtrl_NumPIN.GetValue(), self.maxSpinCtrl_NumPIN):
+            self.sizer_PIN_name[i].Hide(self.RadioBtn_PIN_num[i])
             self.sizer_PIN_name[i].Hide(self.TextCtrl_PIN_name[i])
             self.sizer_PIN_name[i].Hide(self.Btn_EditPIN_name[i])
-        pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
+            if self.RadioBtn_PIN_num[i].GetValue():
+                self.RadioBtn_PIN_num[0].SetValue(True)
+        for i in range(self.maxSpinCtrl_NumPIN):
+            if self.RadioBtn_PIN_num[i].GetValue():
+                self.Selected_PIN = i
+
+        pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=[self.Selected_PIN, self.PIN_type])
         self.Layout()
+
+    def onRadioBtn_Cliked(self, event):
+        for i in range(self.maxSpinCtrl_NumPIN):
+            if self.RadioBtn_PIN_num[i].GetValue():
+                self.Selected_PIN = i
+        pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=[self.Selected_PIN, self.PIN_type])
+
 
     def onKeyTyped_PIN_name(self, event):
         pass
@@ -278,11 +322,62 @@ class ControlPanel(wx.Panel):
         #        self.PIN_type[i] = event.GetString()
         #        pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
 
-    def click_CheckBox_Sym(self, event):
-        pub.sendMessage('CPanel Symmetry', arg1=self.CheckBox_Symmetry.GetValue())
 
-    def click_CheckBox_Zoom(self, event):
-        pub.sendMessage('CPanel Zoom', arg1=self.CheckBox_Zoom.GetValue())
+    def click_Btn_EditMat(self, event):
+        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(350, 500), style=wx.DEFAULT_DIALOG_STYLE)
+        DialogMaterial.CenterOnScreen()
+
+        # this does not return until the dialog is closed.
+        val = DialogMaterial.ShowModal()
+        if val == wx.ID_OK:
+            print("You pressed OK need to save data")
+        else:
+            print("You pressed Cancel")
+
+        DialogMaterial.Destroy()
+
+
+class MaterialEdit(wx.Dialog):
+    def __init__(self, parent, id, title, size=wx.DefaultSize, pos=wx.DefaultPosition, style=wx.DEFAULT_DIALOG_STYLE, name='dialog'):
+        wx.Dialog.__init__(self)
+        self.Create(parent, id, title, pos, size, style, name)
+
+        topsizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Difference between using PropertyGridManager vs PropertyGrid is that
+        # the manager supports multiple pages and a description box.
+        self.pg = pg = wxpg.PropertyGrid(self, style=wxpg.PG_SPLITTER_AUTO_CENTER | wxpg.PG_AUTO_SORT | wxpg.PG_TOOLBAR)
+
+        # Show help as tooltips
+        pg.SetExtraStyle(wxpg.PG_EX_HELP_AS_TOOLTIPS)
+
+        #pg.AddPage( "Page 1 - Testing All" )
+
+        pg.Append( wxpg.PropertyCategory("1 - Basic Properties") )
+        pg.Append( wxpg.StringProperty("String",value="Some Text") )
+
+        sp = pg.Append( wxpg.StringProperty('StringProperty_as_Password', value='ABadPassword') )
+        sp.SetAttribute('Hint', 'This is a hint')
+        sp.SetAttribute('Password', True)
+
+        pg.Append( wxpg.IntProperty("Int", value=100) )
+        self.fprop = pg.Append( wxpg.FloatProperty("Float", value=123.456) )
+        pg.Append( wxpg.BoolProperty("Bool", value=True) )
+        boolprop = pg.Append( wxpg.BoolProperty("Bool_with_Checkbox", value=True) )
+        pg.SetPropertyAttribute(
+            "Bool_with_Checkbox",    # You can find the property by name,
+            #boolprop,               # or give the property object itself.
+            "UseCheckbox", True)     # The attribute name and value
+
+        pg.Append(wxpg.PropertyCategory("2 - More Properties"))
+        pg.Append(wxpg.LongStringProperty("LongString",
+                                          value="This is a\nmulti-line string\nwith\ttabs\nmixed\tin."))
+        pg.Append(wxpg.DirProperty("Dir", value=r"C:\Windows"))
+        pg.Append(wxpg.FileProperty("File", value=r"C:\Windows\system.ini"))
+        pg.Append(wxpg.ArrayStringProperty("ArrayString", value=['A', 'B', 'C']))
+
+        topsizer.Add(pg, 1, wx.EXPAND)
+
 
 
 
@@ -789,9 +884,10 @@ class TVSPanel(wx.Panel):
         # Add the Canvas
         self.Canvas = FloatCanvas.FloatCanvas(self,-1,(w, h), ProjectionFun = None, Debug = 0, BackgroundColor = 'WHITE')
 
-    def SaveInfoPIN(self, NumPIN, PIN_type):
+    def SaveInfoPIN(self, NumPIN, Selected_PIN, PIN_type):
         self.NumPIN = NumPIN
         self.PIN_type = PIN_type
+        self.Selected_PIN = Selected_PIN
 
     def InfoNumPIN(self):
         return self.NumPIN
@@ -957,39 +1053,18 @@ class TVSPanel(wx.Panel):
     def ModifyMapType(self, button, dRow, dCol, color_type, NumPIN):
         # Modification MAP_TYPE
         if button == 'left':
-            if map_PIN_type[self.InTVS][dRow][dCol] == '1':
-                if NumPIN > 1: Type = self.StdPIN(dRow, dCol, color_type, color = 1, Type = 2)
-                else: Type = self.StdPIN(dRow, dCol, color_type)
-            elif map_PIN_type[self.InTVS][dRow][dCol] == '2':
-                if NumPIN > 2: Type = self.StdPIN(dRow, dCol, color_type, color = 2, Type = 3)
-                else: Type = self.StdPIN(dRow, dCol, color_type)
-            elif map_PIN_type[self.InTVS][dRow][dCol] == '3':
-                if NumPIN >3: Type = self.StdPIN(dRow, dCol, color_type, color = 3, Type = 4)
-                else: Type = self.StdPIN(dRow, dCol, color_type)
-            elif map_PIN_type[self.InTVS][dRow][dCol] == '4':
-                if NumPIN > 4: Type = self.StdPIN(dRow, dCol, color_type, color = 4, Type = 5)
-                else: Type = self.StdPIN(dRow, dCol, color_type)
-            elif map_PIN_type[self.InTVS][dRow][dCol] == '5':
-                if NumPIN > 5: Type = self.StdPIN(dRow, dCol, color_type, color = 5, Type = 6)
-                else: Type = self.StdPIN(dRow, dCol, color_type)
-            elif map_PIN_type[self.InTVS][dRow][dCol] == '6':
-                if NumPIN > 6: Type = self.StdPIN(dRow, dCol, color_type, color = 6, Type = 7)
-                else: Type = self.StdPIN(dRow, dCol, color_type)
-            elif map_PIN_type[self.InTVS][dRow][dCol] == '7':
-                if NumPIN > 7: Type = self.StdPIN(dRow, dCol, color_type, color = 7, Type = 8)
-                else: Type = self.StdPIN(dRow, dCol, color_type)
-            elif map_PIN_type[self.InTVS][dRow][dCol] == '8':
-                Type = self.StdPIN(dRow, dCol, color_type)
+            Type = self.Selected_PIN+1
+            color = self.Selected_PIN
+            self.HexTextType[dRow][dCol].SetText(str(Type))
+            self.Hex[dRow][dCol].SetFillColor(color_type[color])
+
             map_PIN_type[self.InTVS][dRow] = map_PIN_type[self.InTVS][dRow][:dCol] + str(Type) + map_PIN_type[self.InTVS][dRow][(dCol + 1):]
 
-    def StdPIN(self, dRow, dCol, color_type, color = 0, Type = 1):
-        self.HexTextType[dRow][dCol].SetText(str(Type))
-        self.Hex[dRow][dCol].SetFillColor(color_type[color])
-        return Type
 
 class MainFrame(wx.Frame):
     def __init__(self):
         wx.Frame.__init__(self, None, wx.ID_ANY, 'Active Zone VVER maker', size=(1250, 1015))
+        self.CenterOnScreen()
 
         self.NumTVS = init_NumTVS     # initial (default) value number of TVSs = 3
         self.TVS_type = ['XXXXXX' for i in range(max_NumTVS)]
@@ -998,6 +1073,7 @@ class MainFrame(wx.Frame):
         self.TVS_type[2] = 'E445A22'
 
         self.NumPIN = init_NumPIN     # initial (default) value number of PINs = 5
+        self.Selected_PIN = 0
         self.PIN_type = ['xxxxxx' for i in range(max_NumPIN)]
         self.PIN_type[0] = 'U49P50'
         self.PIN_type[1] = 'U44P50'
@@ -1034,7 +1110,7 @@ class MainFrame(wx.Frame):
         self.mainAZonePanel.DrawMap()
 
         for i in range(max_NumTVS):
-            self.mainTVSPanel[i].SaveInfoPIN(self.NumPIN, self.PIN_type)
+            self.mainTVSPanel[i].SaveInfoPIN(self.NumPIN, self.Selected_PIN, self.PIN_type)
             self.mainTVSPanel[i].DrawMap()
 
 
@@ -1080,10 +1156,10 @@ class MainFrame(wx.Frame):
         IsZoom = arg1
         if IsZoom:
             self.mainAZonePanel.Zoom('zoomIn')
-            for i in range(self.NumPIN): self.mainTVSPanel[i].Zoom('zoomIn')
+            for i in range(self.NumTVS): self.mainTVSPanel[i].Zoom('zoomIn')
         else:
             self.mainAZonePanel.Zoom('zoomOut')
-            for i in range(self.NumPIN): self.mainTVSPanel[i].Zoom('zoomOut')
+            for i in range(self.NumTVS): self.mainTVSPanel[i].Zoom('zoomOut')
 
     def listenerCPanelTVS(self, arg1, arg2=None):
         self.NumTVS = arg1
@@ -1100,16 +1176,17 @@ class MainFrame(wx.Frame):
     def ListenerCPanelPIN(self, arg1, arg2=None):
         self.NumPIN = arg1
         if arg2:
-            self.PIN_type = arg2
-            #for i in range(len(arg2)):
+            self.Selected_PIN = arg2[0]
+            self.PIN_type = arg2[1]
+            #for i in range(len(arg2[1])):
                 #print(self.PIN_type[i])
 
         for i in range(max_NumTVS):
-            self.mainTVSPanel[i].SaveInfoPIN(self.NumPIN, self.PIN_type)
+            self.mainTVSPanel[i].SaveInfoPIN(self.NumPIN, self.Selected_PIN, self.PIN_type)
             #self.mainTVSPanel[i].DrawMap()
 
-        self.mainAZonePanel.SaveInfoTVS(self.NumTVS, self.TVS_type)
-        self.mainAZonePanel.modifyTVSname()
+        #self.mainAZonePanel.SaveInfoTVS(self.NumTVS, self.TVS_type)
+        #self.mainAZonePanel.modifyTVSname()
 
 
 if  __name__ == '__main__':
