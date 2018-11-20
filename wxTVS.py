@@ -58,19 +58,19 @@ for i in range(max_NumTVS):
         '----------111111111111-',  # 3
         '---------1111111111111-',  # 4
         '--------11111111111111-',  # 5
-        '-------111111101111111-',  # 6
-        '------1111101111011111-',  # 7
+        '-------111111191111111-',  # 6
+        '------1111191111911111-',  # 7
         '-----11111111111111111-',  # 8
-        '----111101110111101111-',  # 9
-        '---1111111111101111111-',  # 10
-        '--11111110111111111111-',  # 11
-        '-111110111101111011111-',  # 12
-        '-11111111111101111111--',  # 13
-        '-1111111011111111111---',  # 14
-        '-111101111011101111----',  # 15
+        '----111191119111191111-',  # 9
+        '---1111111111191111111-',  # 10
+        '--11111119111111111111-',  # 11
+        '-111119111191111911111-',  # 12
+        '-11111111111191111111--',  # 13
+        '-1111111911111111111---',  # 14
+        '-111191111911191111----',  # 15
         '-11111111111111111-----',  # 16
-        '-1111101111011111------',  # 17
-        '-111111101111111-------',  # 18
+        '-1111191111911111------',  # 17
+        '-111111191111111-------',  # 18
         '-11111111111111--------',  # 19
         '-1111111111111---------',  # 20
         '-111111111111----------',  # 21
@@ -711,54 +711,48 @@ class AZonePanel(wx.Panel):
         # Modification MAP_YEAR
         if button == 'left':
             if map_year[dRow][dCol] == '1':
-                Year = 2
-                self.HexTextYear[dRow][dCol].SetText(str(Year))
-                self.Hex[dRow][dCol].SetFillColor(color_year[1])
+                Year = self.StdTVS_year(dRow, dCol, color_year, color = 1, Year = 2)
             elif map_year[dRow][dCol] == '2':
-                Year = 3
-                self.HexTextYear[dRow][dCol].SetText(str(Year))
-                self.Hex[dRow][dCol].SetFillColor(color_year[2])
+                Year = self.StdTVS_year(dRow, dCol, color_year, color=2, Year=3)
             elif map_year[dRow][dCol] == '3':
-                Year = 1
-                self.HexTextYear[dRow][dCol].SetText(str(Year))
-                self.Hex[dRow][dCol].SetFillColor(color_year[0])
+                Year = self.StdTVS_year(dRow, dCol, color_year, color=0, Year=1)
             map_year[dRow] = map_year[dRow][:dCol] + str(Year) + map_year[dRow][(dCol + 1):]
+
+    def StdTVS_year(self, dRow, dCol, color_year, color, Year):
+        self.HexTextYear[dRow][dCol].SetText(str(Year))
+        self.Hex[dRow][dCol].SetFillColor(color_year[color])
+        return Year
 
     def ModifyMapType(self, button, dRow, dCol, NumTVS, TVS_type):
         # Modification MAP_TYPE
         if button == 'right':
             if map_type[dRow][dCol] == '1':
                 if NumTVS > 1:
-                    Type = 2
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[1])
+                    Type = self.StdTVS_type(dRow, dCol,  TVS_type, N_type=1, Type=2)
                 else:
-                    Type = 1
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                    Type = self.StdTVS_type(dRow, dCol, TVS_type)
             elif map_type[dRow][dCol] == '2':
                 if NumTVS > 2:
-                    Type = 3
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[2])
+                    Type = self.StdTVS_type(dRow, dCol,  TVS_type, N_type=2, Type=3)
                 else:
-                    Type = 1
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                    Type = self.StdTVS_type(dRow, dCol, TVS_type)
             elif map_type[dRow][dCol] == '3':
                 if NumTVS > 3:
-                    Type = 4
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[3])
+                    Type = self.StdTVS_type(dRow, dCol,  TVS_type, N_type=3, Type=4)
                 else:
-                    Type = 1
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                    Type = self.StdTVS_type(dRow, dCol, TVS_type)
             elif map_type[dRow][dCol] == '4':
                 if NumTVS > 4:
-                    Type = 5
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[4])
+                    Type = self.StdTVS_type(dRow, dCol,  TVS_type, N_type=3, Type=4)
                 else:
-                    Type = 1
-                    self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                    Type = self.StdTVS_type(dRow, dCol, TVS_type)
             elif map_type[dRow][dCol] == '5':
-                Type = 1
-                self.HexTextType[dRow][dCol].SetText(TVS_type[0])
+                Type = self.StdTVS_type(dRow, dCol, TVS_type)
             map_type[dRow] = map_type[dRow][:dCol] + str(Type) + map_type[dRow][(dCol + 1):]
+
+    def StdTVS_type(self, dRow, dCol, TVS_type, N_type = 0, Type = 1):
+        self.HexTextType[dRow][dCol].SetText(TVS_type[N_type])
+        return Type
 
 
     def modifyTVSname(self):
@@ -805,6 +799,37 @@ class TVSPanel(wx.Panel):
     def InfoPINtype(self):
         return self.PIN_type
 
+    def SymmetrySave(self, do):
+        self.IS_Symmetry = do
+
+    def Zoom(self, do):
+        count = 0
+        MainPINs = [[11,11]]
+        for i in range(int(TVS_dimension / 2), TVS_dimension):
+            for j in range(int(TVS_dimension / 2)+1, TVS_dimension - count):
+                MainPINs.append([i, j])
+            count += 1
+
+        for row in range(TVS_dimension):
+            for col in range(TVS_dimension):
+                if do == 'zoomIn':
+                    All_index = [row, col]
+                    if All_index not in MainPINs:
+                        self.Hex[row][col].Hide()
+                        if self.HexTextType[row][col]: self.HexTextType[row][col].SetColor('WHITE')
+                elif do == 'zoomOut':
+                    if map_PIN_type[self.InTVS][row][col] != '-':
+                        self.Hex[row][col].Show()
+                        if self.HexTextType[row][col]: self.HexTextType[row][col].SetColor('BLACK')
+
+        PIN = PINsize()
+        Csym = int(TVS_dimension / 2)
+        if do == 'zoomIn':
+            self.Canvas.Zoom(1.8, (PIN.r*2*Csym+PIN.r*Csym+PIN.r*10, PIN.R*Csym*3/2+PIN.R*7))
+        elif do == 'zoomOut':
+            self.Canvas.Zoom(1/1.8, (PIN.r * 2 * Csym + PIN.r * Csym, PIN.R * Csym * 3 / 2))
+
+
     def DrawMap(self):
         PIN = PINsize()
         r = PIN.r
@@ -824,24 +849,58 @@ class TVSPanel(wx.Panel):
                 Points = [(dx + r, dy + R / 2), (dx + r, dy - R / 2),
                           (dx + 0, dy - R), (dx - r, dy - R / 2),
                           (dx - r, dy + R / 2), (dx + 0, dy + R)]
+
                 if col == '1':
                     self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[0])
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
                     self.Hex[dRow][dCol].Index = (dRow, dCol)
-                    self.HexTextYear[dRow][dCol] = self.Canvas.AddText('1', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('1', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
                                                                        Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 elif col == '2':
                     self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[1])
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
                     self.Hex[dRow][dCol].Index = (dRow, dCol)
-                    self.HexTextYear[dRow][dCol] = self.Canvas.AddText('2', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('2', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
                                                                        Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
                 elif col == '3':
                     self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[2])
                     self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
                     self.Hex[dRow][dCol].Index = (dRow, dCol)
-                    self.HexTextYear[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
                                                                        Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
+                elif col == '4':
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[3])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
+                elif col == '5':
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[4])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
+                elif col == '6':
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[5])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
+                elif col == '7':
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[6])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
+                elif col == '8':
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor=color_type[7])
+                    self.Hex[dRow][dCol].Bind(FloatCanvas.EVT_FC_LEFT_DOWN, self.onClick_Lbtn)
+                    self.Hex[dRow][dCol].Index = (dRow, dCol)
+                    self.HexTextType[dRow][dCol] = self.Canvas.AddText('3', (dx-r*4/5, dy+R/8), Size = 10, Color = 'BLACK',
+                                                                       Family = wx.FONTFAMILY_MODERN, Weight = wx.FONTWEIGHT_NORMAL, Position='bl')
+                elif col == '9':
+                    self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='NAVI', FillColor= 'WHITE')
+
                 else:
                     self.Hex[dRow][dCol] = self.Canvas.AddPolygon(Points, LineColor='WHITE', FillColor='WHITE')
                     self.Hex[dRow][dCol].Hide()
@@ -888,38 +947,45 @@ class TVSPanel(wx.Panel):
                     for SymIndex in Sym[i]:  # get indexes of all symetry TVS from list
                         dRow = SymIndex[0]
                         dCol = SymIndex[1]
-                        self.ModifyMapType(button, dRow, dCol, color_type)
+                        self.ModifyMapType(button, dRow, dCol, color_type, NumPIN)
         else:
-            self.ModifyMapType(button, dRow, dCol, color_type)
+            self.ModifyMapType(button, dRow, dCol, color_type, NumPIN)
 
         self.Canvas.Draw(True)
 
 
-    def ModifyMapType(self, button, dRow, dCol, color_type):
+    def ModifyMapType(self, button, dRow, dCol, color_type, NumPIN):
         # Modification MAP_TYPE
         if button == 'left':
             if map_PIN_type[self.InTVS][dRow][dCol] == '1':
-                Type = 2
-                self.HexTextYear[dRow][dCol].SetText(str(Type))
-                self.Hex[dRow][dCol].SetFillColor(color_type[1])
+                if NumPIN > 1: Type = self.StdPIN(dRow, dCol, color_type, color = 1, Type = 2)
+                else: Type = self.StdPIN(dRow, dCol, color_type)
             elif map_PIN_type[self.InTVS][dRow][dCol] == '2':
-                Type = 3
-                self.HexTextYear[dRow][dCol].SetText(str(Type))
-                self.Hex[dRow][dCol].SetFillColor(color_type[2])
+                if NumPIN > 2: Type = self.StdPIN(dRow, dCol, color_type, color = 2, Type = 3)
+                else: Type = self.StdPIN(dRow, dCol, color_type)
             elif map_PIN_type[self.InTVS][dRow][dCol] == '3':
-                Type = 4
-                self.HexTextYear[dRow][dCol].SetText(str(Type))
-                self.Hex[dRow][dCol].SetFillColor(color_type[3])
+                if NumPIN >3: Type = self.StdPIN(dRow, dCol, color_type, color = 3, Type = 4)
+                else: Type = self.StdPIN(dRow, dCol, color_type)
             elif map_PIN_type[self.InTVS][dRow][dCol] == '4':
-                Type = 5
-                self.HexTextYear[dRow][dCol].SetText(str(Type))
-                self.Hex[dRow][dCol].SetFillColor(color_type[4])
+                if NumPIN > 4: Type = self.StdPIN(dRow, dCol, color_type, color = 4, Type = 5)
+                else: Type = self.StdPIN(dRow, dCol, color_type)
             elif map_PIN_type[self.InTVS][dRow][dCol] == '5':
-                Type = 1
-                self.HexTextYear[dRow][dCol].SetText(str(Type))
-                self.Hex[dRow][dCol].SetFillColor(color_type[0])
+                if NumPIN > 5: Type = self.StdPIN(dRow, dCol, color_type, color = 5, Type = 6)
+                else: Type = self.StdPIN(dRow, dCol, color_type)
+            elif map_PIN_type[self.InTVS][dRow][dCol] == '6':
+                if NumPIN > 6: Type = self.StdPIN(dRow, dCol, color_type, color = 6, Type = 7)
+                else: Type = self.StdPIN(dRow, dCol, color_type)
+            elif map_PIN_type[self.InTVS][dRow][dCol] == '7':
+                if NumPIN > 7: Type = self.StdPIN(dRow, dCol, color_type, color = 7, Type = 8)
+                else: Type = self.StdPIN(dRow, dCol, color_type)
+            elif map_PIN_type[self.InTVS][dRow][dCol] == '8':
+                Type = self.StdPIN(dRow, dCol, color_type)
             map_PIN_type[self.InTVS][dRow] = map_PIN_type[self.InTVS][dRow][:dCol] + str(Type) + map_PIN_type[self.InTVS][dRow][(dCol + 1):]
 
+    def StdPIN(self, dRow, dCol, color_type, color = 0, Type = 1):
+        self.HexTextType[dRow][dCol].SetText(str(Type))
+        self.Hex[dRow][dCol].SetFillColor(color_type[color])
+        return Type
 
 class MainFrame(wx.Frame):
     def __init__(self):
@@ -967,7 +1033,7 @@ class MainFrame(wx.Frame):
         self.mainAZonePanel.SaveInfoTVS(self.NumTVS, self.TVS_type)
         self.mainAZonePanel.DrawMap()
 
-        for i in range(self.NumPIN):
+        for i in range(max_NumTVS):
             self.mainTVSPanel[i].SaveInfoPIN(self.NumPIN, self.PIN_type)
             self.mainTVSPanel[i].DrawMap()
 
@@ -979,7 +1045,7 @@ class MainFrame(wx.Frame):
         pub.subscribe(self.listenerCPanelSymmetry, 'CPanel Symmetry')
         pub.subscribe(self.listenerCPanelZoom, 'CPanel Zoom')
         pub.subscribe(self.listenerCPanelTVS, 'CPanel TVS')
-        #pub.subscribe(self.ListenerCPanelPIN, 'CPanel PIN')
+        pub.subscribe(self.ListenerCPanelPIN, 'CPanel PIN')
 
 
     def updateMapsBook(self):
@@ -1004,6 +1070,21 @@ class MainFrame(wx.Frame):
         self.Layout()
 
 
+    def listenerCPanelSymmetry(self, arg1, arg2=None):
+        IsSymmetry = arg1
+        self.mainAZonePanel.SymmetrySave(IsSymmetry)
+        for i in range(max_NumTVS):
+            self.mainTVSPanel[i].SymmetrySave(IsSymmetry)
+
+    def listenerCPanelZoom(self, arg1, arg2=None):
+        IsZoom = arg1
+        if IsZoom:
+            self.mainAZonePanel.Zoom('zoomIn')
+            for i in range(self.NumPIN): self.mainTVSPanel[i].Zoom('zoomIn')
+        else:
+            self.mainAZonePanel.Zoom('zoomOut')
+            for i in range(self.NumPIN): self.mainTVSPanel[i].Zoom('zoomOut')
+
     def listenerCPanelTVS(self, arg1, arg2=None):
         self.NumTVS = arg1
         #print('NumTVS:', self.NumTVS)
@@ -1016,30 +1097,23 @@ class MainFrame(wx.Frame):
         self.mainAZonePanel.SaveInfoTVS(self.NumTVS, self.TVS_type)
         self.mainAZonePanel.modifyTVSname()
 
+    def ListenerCPanelPIN(self, arg1, arg2=None):
+        self.NumPIN = arg1
+        if arg2:
+            self.PIN_type = arg2
+            #for i in range(len(arg2)):
+                #print(self.PIN_type[i])
 
-    def listenerCPanelSymmetry(self, arg1, arg2=None):
-        IsSymmetry = arg1
-        self.mainAZonePanel.SymmetrySave(IsSymmetry)
+        for i in range(max_NumTVS):
+            self.mainTVSPanel[i].SaveInfoPIN(self.NumPIN, self.PIN_type)
+            #self.mainTVSPanel[i].DrawMap()
 
-    def listenerCPanelZoom(self, arg1, arg2=None):
-        IsZoom = arg1
-        if IsZoom:
-            self.mainAZonePanel.Zoom('zoomIn')
-        else:
-            self.mainAZonePanel.Zoom('zoomOut')
-
-
-#    def ListenerCPanelPIN(self, arg1, arg2=None):
-#        self.NumPIN = arg1
-#        if arg2:
-#            self.PIN_type = arg2
-#            #print(arg1)
-#            for i in range(len(arg2)):
-#                #print(self.PIN_type[i])
+        self.mainAZonePanel.SaveInfoTVS(self.NumTVS, self.TVS_type)
+        self.mainAZonePanel.modifyTVSname()
 
 
 if  __name__ == '__main__':
     app = wx.App()
     frame = MainFrame()
     frame.Show()
-    app.MainLoop()
+app.MainLoop()
