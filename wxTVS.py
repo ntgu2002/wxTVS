@@ -2,8 +2,8 @@ import wx
 import math
 from pubsub import pub
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas
-import wx.propgrid as wxpg
-
+import wx.grid
+import wx.lib.agw.pycollapsiblepane
 
 AZ_dimension = 17
 max_NumTVS   = 5
@@ -324,7 +324,7 @@ class ControlPanel(wx.Panel):
 
 
     def click_Btn_EditMat(self, event):
-        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(350, 500), style=wx.DEFAULT_DIALOG_STYLE)
+        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(505, 500), style=wx.DEFAULT_DIALOG_STYLE)
         DialogMaterial.CenterOnScreen()
 
         # this does not return until the dialog is closed.
@@ -342,43 +342,113 @@ class MaterialEdit(wx.Dialog):
         wx.Dialog.__init__(self)
         self.Create(parent, id, title, pos, size, style, name)
 
-        topsizer = wx.BoxSizer(wx.VERTICAL)
+        MainSizer = wx.BoxSizer(wx.VERTICAL)
+        MaterialSizer = wx.BoxSizer(wx.VERTICAL)
+        BtnSizer = wx.BoxSizer(wx.HORIZONTAL)
 
-        # Difference between using PropertyGridManager vs PropertyGrid is that
-        # the manager supports multiple pages and a description box.
-        self.pg = pg = wxpg.PropertyGrid(self, style=wxpg.PG_SPLITTER_AUTO_CENTER | wxpg.PG_AUTO_SORT | wxpg.PG_TOOLBAR)
+        self.MaxNumMaterials = 99
+        self.NumMaterials = 5
+        self.initMaxNucl = 8
 
-        # Show help as tooltips
-        pg.SetExtraStyle(wxpg.PG_EX_HELP_AS_TOOLTIPS)
-
-        #pg.AddPage( "Page 1 - Testing All" )
-
-        pg.Append( wxpg.PropertyCategory("1 - Basic Properties") )
-        pg.Append( wxpg.StringProperty("String",value="Some Text") )
-
-        sp = pg.Append( wxpg.StringProperty('StringProperty_as_Password', value='ABadPassword') )
-        sp.SetAttribute('Hint', 'This is a hint')
-        sp.SetAttribute('Password', True)
-
-        pg.Append( wxpg.IntProperty("Int", value=100) )
-        self.fprop = pg.Append( wxpg.FloatProperty("Float", value=123.456) )
-        pg.Append( wxpg.BoolProperty("Bool", value=True) )
-        boolprop = pg.Append( wxpg.BoolProperty("Bool_with_Checkbox", value=True) )
-        pg.SetPropertyAttribute(
-            "Bool_with_Checkbox",    # You can find the property by name,
-            #boolprop,               # or give the property object itself.
-            "UseCheckbox", True)     # The attribute name and value
-
-        pg.Append(wxpg.PropertyCategory("2 - More Properties"))
-        pg.Append(wxpg.LongStringProperty("LongString",
-                                          value="This is a\nmulti-line string\nwith\ttabs\nmixed\tin."))
-        pg.Append(wxpg.DirProperty("Dir", value=r"C:\Windows"))
-        pg.Append(wxpg.FileProperty("File", value=r"C:\Windows\system.ini"))
-        pg.Append(wxpg.ArrayStringProperty("ArrayString", value=['A', 'B', 'C']))
-
-        topsizer.Add(pg, 1, wx.EXPAND)
+        AllOptionsSizer = [0 for i in range(self.MaxNumMaterials)]
+        OptionsSizer = [0 for i in range(self.MaxNumMaterials)]
+        GridSizer = [0 for i in range(self.MaxNumMaterials)]
+        self.CollPane = [0 for i in range(self.MaxNumMaterials)]
+        pane = [0 for i in range(self.MaxNumMaterials)]
+        Label_MaterialsName = [0 for i in range(self.MaxNumMaterials)]
+        Label_MaterialsDens = [0 for i in range(self.MaxNumMaterials)]
+        Label_MaterialsTemp = [0 for i in range(self.MaxNumMaterials)]
+        Label_MaxNumNucl = [0 for i in range(self.MaxNumMaterials)]
+        TextCtrl_MaterialName = [0 for i in range(self.MaxNumMaterials)]
+        TextCtrl_MaterialDens = [0 for i in range(self.MaxNumMaterials)]
+        TextCtrl_MaterialTemp = [0 for i in range(self.MaxNumMaterials)]
+        SpinCtrl_MaxNumNucl = [0 for i in range(self.MaxNumMaterials)]
+        self.grid = [0 for i in range(self.MaxNumMaterials)]
 
 
+        for i in range(self.NumMaterials):
+
+            AllOptionsSizer[i] = wx.BoxSizer(wx.HORIZONTAL)
+            OptionsSizer[i] = wx.GridBagSizer(hgap=4, vgap=2)
+            GridSizer[i] = wx.BoxSizer(wx.VERTICAL)
+
+            self.CollPane[i] = wx.lib.agw.pycollapsiblepane.PyCollapsiblePane(self, label="Material "+str(i+1), style=wx.CP_DEFAULT_STYLE | wx.CP_NO_TLW_RESIZE)
+            pane[i] = self.CollPane[i].GetPane()
+
+            # Materials Name
+            Label_MaterialsName[i] = wx.StaticText(pane[i], -1, "Materials Name:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+            TextCtrl_MaterialName[i] = wx.TextCtrl(pane[i], -1, "mat "+str(i+1), (0, 0), (100, 20))
+
+            # Materials Density
+            Label_MaterialsDens[i] = wx.StaticText(pane[i], -1, "Materials Density:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+            TextCtrl_MaterialDens[i] = wx.TextCtrl(pane[i], -1, "", (0, 0), (100, 20))
+
+            # Materials Temp
+            Label_MaterialsTemp[i] = wx.StaticText(pane[i], -1, "Materials Temperature:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+            TextCtrl_MaterialTemp[i] = wx.TextCtrl(pane[i], -1, "", (0, 0), (100, 20))
+
+            # Max Num of Nuclides
+            Label_MaxNumNucl[i] = wx.StaticText(pane[i], -1, "Max num of Nuclide:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+            SpinCtrl_MaxNumNucl[i] = wx.SpinCtrl(pane[i], -1, "", (0, 0), (100, 20), min=1, max=99, initial=self.initMaxNucl)
+            SpinCtrl_MaxNumNucl[i].Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_MaxNumNucl)
+
+            flagLabel = wx.TOP | wx.DOWN | wx.ALIGN_TOP
+            flagCtrl = wx.TOP | wx.DOWN | wx.ALIGN_TOP
+            bord = 1
+            OptionsSizer[i].Add(Label_MaterialsName[i], pos=(0, 0), flag=flagLabel, border=bord)
+            OptionsSizer[i].Add(Label_MaterialsDens[i], pos=(1, 0), flag=flagLabel, border=bord)
+            OptionsSizer[i].Add(Label_MaterialsTemp[i], pos=(2, 0), flag=flagLabel, border=bord)
+            OptionsSizer[i].Add(Label_MaxNumNucl[i],    pos=(3, 0), flag=flagLabel, border=bord)
+            OptionsSizer[i].Add(TextCtrl_MaterialName[i], pos=(0, 1), flag=flagCtrl, border=bord)
+            OptionsSizer[i].Add(TextCtrl_MaterialDens[i], pos=(1, 1), flag=flagCtrl, border=bord)
+            OptionsSizer[i].Add(TextCtrl_MaterialTemp[i], pos=(2, 1), flag=flagCtrl, border=bord)
+            OptionsSizer[i].Add(SpinCtrl_MaxNumNucl[i],   pos=(3, 1), flag=flagCtrl, border=bord)
+
+
+            # Nuclides Grid
+            self.grid[i] = wx.grid.Grid(pane[i], -1)
+            self.grid[i].CreateGrid(self.initMaxNucl, 2)
+            self.grid[i].SetColSize(0, 100)
+            self.grid[i].SetColSize(1, 100)
+            self.grid[i].SetColLabelSize(22)
+            self.grid[i].SetColLabelValue(0, "Nuclide")
+            self.grid[i].SetColLabelValue(1, "Value")
+            self.grid[i].SetRowLabelSize(25)
+            self.grid[i].DisableDragGridSize()
+            self.grid[i].DisableDragColSize()
+            self.grid[i].DisableDragRowSize()
+            GridSizer[i].Add(self.grid[i], 0, wx.ALL, 0)
+
+            AllOptionsSizer[i].Add(OptionsSizer[i], 0, wx.ALL, 5)
+            AllOptionsSizer[i].Add(GridSizer[i], 1, wx.ALL | wx.EXPAND, 5)
+
+            pane[i].SetSizer(AllOptionsSizer[i])
+
+            MaterialSizer.Add(self.CollPane[i], 1, wx.ALL | wx.EXPAND, 5)
+
+
+        #Button OK Cancel
+        Btn_OK = wx.Button(self, -1, "OK")
+        Btn_Cancel = wx.Button(self, -1, "Cancel")
+        BtnSizer.Add(Btn_OK, 0, wx.RIGHT | wx.ALIGN_RIGHT, 5)
+        BtnSizer.Add(Btn_Cancel, 0, wx.LEFT | wx.ALIGN_RIGHT, 5)
+
+
+        MainSizer.Add(MaterialSizer, 0, wx.ALL | wx.EXPAND, 5)
+        MainSizer.Add(BtnSizer, 0, wx.ALL | wx.ALIGN_RIGHT, 5)
+        self.SetSizer(MainSizer)
+
+
+
+
+    def click_SpinCtrl_MaxNumNucl(self, event):
+        #self.grid.InsertRows(self.initMaxNucl, 1)
+        #self.grid.SetColSize(0, 92)
+        #self.grid.SetColSize(1, 91)
+        pass
+
+
+        #self.Layout()
 
 
 class SelectObject(object):
