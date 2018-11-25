@@ -324,7 +324,7 @@ class ControlPanel(wx.Panel):
 
 
     def click_Btn_EditMat(self, event):
-        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(505, 500), style=wx.DEFAULT_DIALOG_STYLE)
+        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(730, 305), style=wx.DEFAULT_DIALOG_STYLE)
         DialogMaterial.CenterOnScreen()
 
         # this does not return until the dialog is closed.
@@ -342,102 +342,117 @@ class MaterialEdit(wx.Dialog):
         wx.Dialog.__init__(self)
         self.Create(parent, id, title, pos, size, style, name)
 
-        MainSizer = wx.BoxSizer(wx.VERTICAL)
-        MaterialSizer = wx.BoxSizer(wx.VERTICAL)
-        BtnSizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.MaxNumMaterials = 99
-        self.NumMaterials = 5
+        self.MaxNumMaterials = 30
+        self.NumMaterials = 1
         self.initMaxNucl = 8
 
-        AllOptionsSizer = [0 for i in range(self.MaxNumMaterials)]
-        OptionsSizer = [0 for i in range(self.MaxNumMaterials)]
-        GridSizer = [0 for i in range(self.MaxNumMaterials)]
-        self.CollPane = [0 for i in range(self.MaxNumMaterials)]
-        pane = [0 for i in range(self.MaxNumMaterials)]
-        Label_MaterialsName = [0 for i in range(self.MaxNumMaterials)]
-        Label_MaterialsDens = [0 for i in range(self.MaxNumMaterials)]
-        Label_MaterialsTemp = [0 for i in range(self.MaxNumMaterials)]
-        Label_MaxNumNucl = [0 for i in range(self.MaxNumMaterials)]
-        TextCtrl_MaterialName = [0 for i in range(self.MaxNumMaterials)]
-        TextCtrl_MaterialDens = [0 for i in range(self.MaxNumMaterials)]
-        TextCtrl_MaterialTemp = [0 for i in range(self.MaxNumMaterials)]
-        SpinCtrl_MaxNumNucl = [0 for i in range(self.MaxNumMaterials)]
-        self.grid = [0 for i in range(self.MaxNumMaterials)]
+
+        MainSizer = wx.BoxSizer(wx.VERTICAL)
+        GeneralMaterialSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        # Materials NAMEs sizer
+        Staticbox_MAT_names = wx.StaticBox(self, -1, label="Materials")
+        self.sizer_MAT_names = wx.StaticBoxSizer(Staticbox_MAT_names, wx.VERTICAL)
+        sizer_NumMAT = wx.BoxSizer(wx.HORIZONTAL)
+
+        Label_NumMat = wx.StaticText(self, -1, "Number of Materials:", (0, 0), (120, 20), wx.ALIGN_LEFT)
+        SpinCtrl_NumMat = wx.SpinCtrl(self, -1, "", (0, 0), (50, 20), min=1, max=self.MaxNumMaterials, initial=self.NumMaterials)
+        # SpinCtrl_NumMat.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumMat)
+
+        sizer_NumMAT.Add(Label_NumMat, 0, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+        sizer_NumMAT.Add(SpinCtrl_NumMat, 0, wx.ALL | wx.EXPAND, 3)
+        self.sizer_MAT_names.Add(sizer_NumMAT, 1, wx.ALL | wx.EXPAND, 0)
+
+        self.MAT_name = ['' for i in range(self.MaxNumMaterials)]
+        self.MAT_name[0] = 'Material 1'
+        self.RadioBtn_MAT_num = [0 for i in range(self.MaxNumMaterials)]
+        self.TextCtrl_MAT_name = [0 for i in range(self.MaxNumMaterials)]
+        self.sizer_MAT_name = [0 for i in range(self.MaxNumMaterials)]
+        self.MATid = [0 for i in range(self.MaxNumMaterials)]
+
+        for i in range(self.MaxNumMaterials):
+            self.MATid[i] = wx.NewId()
+            self.RadioBtn_MAT_num[i] = wx.RadioButton(self, self.MATid[i])
+            #self.RadioBtn_MAT_num[i].Bind(wx.EVT_RADIOBUTTON, self.onRadioBtn_Cliked)
+            self.TextCtrl_MAT_name[i] = wx.TextCtrl(self, self.MATid[i], self.MAT_name[i], (0, 0), (160, 20))
+            #self.TextCtrl_MAT_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_PIN_name)
+            self.sizer_MAT_name[i] = wx.BoxSizer(wx.HORIZONTAL)
+            self.sizer_MAT_name[i].Add(self.RadioBtn_MAT_num[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+            self.sizer_MAT_name[i].Add(self.TextCtrl_MAT_name[i], 0, wx.RIGHT | wx.LEFT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
+            self.sizer_MAT_names.Add(self.sizer_MAT_name[i], 0, wx.ALL | wx.EXPAND, 2)
+        # Hide extra MATs
+        for i in range(SpinCtrl_NumMat.GetValue(), self.MaxNumMaterials):
+            self.sizer_MAT_names.Hide(self.sizer_MAT_name[i])
+
+        self.RadioBtn_MAT_num[0].SetValue(True)
 
 
-        for i in range(self.NumMaterials):
+        #Sizers MatOptions
+        Staticbox_MAT_options = wx.StaticBox(self, -1, label="Options")
+        AllOptionsSizer = wx.StaticBoxSizer(Staticbox_MAT_options, wx.HORIZONTAL)
+        OptionsSizer = wx.GridBagSizer(hgap=4, vgap=2)
+        NuclideGridSizer = wx.BoxSizer(wx.VERTICAL)
 
-            AllOptionsSizer[i] = wx.BoxSizer(wx.HORIZONTAL)
-            OptionsSizer[i] = wx.GridBagSizer(hgap=4, vgap=2)
-            GridSizer[i] = wx.BoxSizer(wx.VERTICAL)
+        # Materials Name
+        Label_MaterialsName = wx.StaticText(self, -1, "Materials Name:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+        TextCtrl_MaterialName = wx.TextCtrl(self, -1, self.MAT_name[0], (0, 0), (100, 20))
 
-            self.CollPane[i] = wx.lib.agw.pycollapsiblepane.PyCollapsiblePane(self, label="Material "+str(i+1), style=wx.CP_DEFAULT_STYLE | wx.CP_NO_TLW_RESIZE)
-            pane[i] = self.CollPane[i].GetPane()
+        # Materials Density
+        Label_MaterialsDens = wx.StaticText(self, -1, "Materials Density:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+        TextCtrl_MaterialDens = wx.TextCtrl(self, -1, "", (0, 0), (100, 20))
 
-            # Materials Name
-            Label_MaterialsName[i] = wx.StaticText(pane[i], -1, "Materials Name:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-            TextCtrl_MaterialName[i] = wx.TextCtrl(pane[i], -1, "mat "+str(i+1), (0, 0), (100, 20))
+        # Materials Temp
+        Label_MaterialsTemp = wx.StaticText(self, -1, "Materials Temperature:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+        TextCtrl_MaterialTemp = wx.TextCtrl(self, -1, "", (0, 0), (100, 20))
 
-            # Materials Density
-            Label_MaterialsDens[i] = wx.StaticText(pane[i], -1, "Materials Density:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-            TextCtrl_MaterialDens[i] = wx.TextCtrl(pane[i], -1, "", (0, 0), (100, 20))
+        # Max Num of Nuclides
+        Label_MaxNumNucl = wx.StaticText(self, -1, "Max num of Nuclide:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+        SpinCtrl_MaxNumNucl = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=99, initial=self.initMaxNucl)
+        SpinCtrl_MaxNumNucl.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_MaxNumNucl)
 
-            # Materials Temp
-            Label_MaterialsTemp[i] = wx.StaticText(pane[i], -1, "Materials Temperature:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-            TextCtrl_MaterialTemp[i] = wx.TextCtrl(pane[i], -1, "", (0, 0), (100, 20))
+        flagLabel = wx.TOP | wx.DOWN | wx.ALIGN_TOP
+        flagCtrl = wx.TOP | wx.DOWN | wx.ALIGN_TOP
+        bord = 1
+        OptionsSizer.Add(Label_MaterialsName, pos=(0, 0), flag=flagLabel, border=bord)
+        OptionsSizer.Add(Label_MaterialsDens, pos=(1, 0), flag=flagLabel, border=bord)
+        OptionsSizer.Add(Label_MaterialsTemp, pos=(2, 0), flag=flagLabel, border=bord)
+        OptionsSizer.Add(Label_MaxNumNucl,    pos=(3, 0), flag=flagLabel, border=bord)
+        OptionsSizer.Add(TextCtrl_MaterialName, pos=(0, 1), flag=flagCtrl, border=bord)
+        OptionsSizer.Add(TextCtrl_MaterialDens, pos=(1, 1), flag=flagCtrl, border=bord)
+        OptionsSizer.Add(TextCtrl_MaterialTemp, pos=(2, 1), flag=flagCtrl, border=bord)
+        OptionsSizer.Add(SpinCtrl_MaxNumNucl,   pos=(3, 1), flag=flagCtrl, border=bord)
 
-            # Max Num of Nuclides
-            Label_MaxNumNucl[i] = wx.StaticText(pane[i], -1, "Max num of Nuclide:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-            SpinCtrl_MaxNumNucl[i] = wx.SpinCtrl(pane[i], -1, "", (0, 0), (100, 20), min=1, max=99, initial=self.initMaxNucl)
-            SpinCtrl_MaxNumNucl[i].Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_MaxNumNucl)
+        # Nuclides Grid
+        self.grid = wx.grid.Grid(self, -1)
+        self.grid.CreateGrid(self.initMaxNucl, 2)
+        self.grid.SetColSize(0, 100)
+        self.grid.SetColSize(1, 100)
+        self.grid.SetColLabelSize(22)
+        self.grid.SetColLabelValue(0, "Nuclide")
+        self.grid.SetColLabelValue(1, "Value")
+        self.grid.SetRowLabelSize(25)
+        self.grid.DisableDragGridSize()
+        self.grid.DisableDragColSize()
+        self.grid.DisableDragRowSize()
+        NuclideGridSizer.Add(self.grid, 0, wx.ALL, 0)
 
-            flagLabel = wx.TOP | wx.DOWN | wx.ALIGN_TOP
-            flagCtrl = wx.TOP | wx.DOWN | wx.ALIGN_TOP
-            bord = 1
-            OptionsSizer[i].Add(Label_MaterialsName[i], pos=(0, 0), flag=flagLabel, border=bord)
-            OptionsSizer[i].Add(Label_MaterialsDens[i], pos=(1, 0), flag=flagLabel, border=bord)
-            OptionsSizer[i].Add(Label_MaterialsTemp[i], pos=(2, 0), flag=flagLabel, border=bord)
-            OptionsSizer[i].Add(Label_MaxNumNucl[i],    pos=(3, 0), flag=flagLabel, border=bord)
-            OptionsSizer[i].Add(TextCtrl_MaterialName[i], pos=(0, 1), flag=flagCtrl, border=bord)
-            OptionsSizer[i].Add(TextCtrl_MaterialDens[i], pos=(1, 1), flag=flagCtrl, border=bord)
-            OptionsSizer[i].Add(TextCtrl_MaterialTemp[i], pos=(2, 1), flag=flagCtrl, border=bord)
-            OptionsSizer[i].Add(SpinCtrl_MaxNumNucl[i],   pos=(3, 1), flag=flagCtrl, border=bord)
+        AllOptionsSizer.Add(OptionsSizer, 0, wx.ALL, 5)               #AllOptionsSizer
+        AllOptionsSizer.Add(NuclideGridSizer, 1, wx.ALL | wx.EXPAND, 5)
 
-
-            # Nuclides Grid
-            self.grid[i] = wx.grid.Grid(pane[i], -1)
-            self.grid[i].CreateGrid(self.initMaxNucl, 2)
-            self.grid[i].SetColSize(0, 100)
-            self.grid[i].SetColSize(1, 100)
-            self.grid[i].SetColLabelSize(22)
-            self.grid[i].SetColLabelValue(0, "Nuclide")
-            self.grid[i].SetColLabelValue(1, "Value")
-            self.grid[i].SetRowLabelSize(25)
-            self.grid[i].DisableDragGridSize()
-            self.grid[i].DisableDragColSize()
-            self.grid[i].DisableDragRowSize()
-            GridSizer[i].Add(self.grid[i], 0, wx.ALL, 0)
-
-            AllOptionsSizer[i].Add(OptionsSizer[i], 0, wx.ALL, 5)
-            AllOptionsSizer[i].Add(GridSizer[i], 1, wx.ALL | wx.EXPAND, 5)
-
-            pane[i].SetSizer(AllOptionsSizer[i])
-
-            MaterialSizer.Add(self.CollPane[i], 1, wx.ALL | wx.EXPAND, 5)
-
+        GeneralMaterialSizer.Add(self.sizer_MAT_names, 0, wx.ALL, 5)     #MaterialSizer
+        GeneralMaterialSizer.Add(AllOptionsSizer, 0, wx.ALL, 5)
 
         #Button OK Cancel
+        BtnSizer = wx.BoxSizer(wx.HORIZONTAL)
         Btn_OK = wx.Button(self, -1, "OK")
         Btn_Cancel = wx.Button(self, -1, "Cancel")
         BtnSizer.Add(Btn_OK, 0, wx.RIGHT | wx.ALIGN_RIGHT, 5)
         BtnSizer.Add(Btn_Cancel, 0, wx.LEFT | wx.ALIGN_RIGHT, 5)
 
 
-        MainSizer.Add(MaterialSizer, 0, wx.ALL | wx.EXPAND, 5)
+        MainSizer.Add(GeneralMaterialSizer, 0, wx.ALL | wx.EXPAND, 5)
         MainSizer.Add(BtnSizer, 0, wx.ALL | wx.ALIGN_RIGHT, 5)
         self.SetSizer(MainSizer)
-
 
 
 
