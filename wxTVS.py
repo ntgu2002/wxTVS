@@ -79,13 +79,50 @@ for i in range(max_NumTVS):
         '-----------------------'  # 23
 ]
 
-max_Material = 100
+max_Material = 30
+num_Materials = 3
+MaxNucl = 30
 Material = [0 for i in range(max_Material)]
-Material[0] = {'Name': 'water', 'Inv': ['1001.03c', '8016.03c'], 'Val': ['2', '1'], 'Den': '-0.7122', 'Tmp': '573'}
-Material[1] = {'Name': 'ZrNb_clad', 'Inv': ['40000.06c', '41093.06c'], 'Val': ['-0.99', '-0.01'], 'Den': '-6.55', 'Tmp': '613'}
-for Mat in Material:
-    if Mat !=0:
-        print(Mat['Name'], Mat['Inv'][0], Mat['Val'][0])
+TmpMaterial = [0 for i in range(max_Material)]
+for i in range(max_Material):
+    Material[i] = {'Name': '', 'Den': '', 'Tmp': '', 'Burn': '', 'NNucl': 0, 'Inv': ['' for i in range(MaxNucl)], 'Val': ['' for i in range(MaxNucl)]}
+    TmpMaterial[i] = {'Name': '', 'Den': '', 'Tmp': '', 'Burn': '', 'NNucl': 0, 'Inv': ['' for i in range(MaxNucl)], 'Val': ['' for i in range(MaxNucl)]}
+
+Material[0]['Name'] = 'ZrNb_clad'
+Material[0]['Den'] = '-6.55'
+Material[0]['Tmp'] = '613'
+Material[0]['Burn'] = False
+Material[0]['NNucl'] = 2
+Material[0]['Inv'][0] = '40000.06c'
+Material[0]['Inv'][1] = '41093.06c'
+Material[0]['Val'][0] = '-0.99'
+Material[0]['Val'][1] = '-0.01'
+
+Material[1]['Name'] = 'Moderator'
+Material[1]['Den'] = '-0.7122'
+Material[1]['Tmp'] = '573'
+Material[1]['Burn'] = False
+Material[1]['NNucl'] = 2
+Material[1]['Inv'][0] = '1001.03c'
+Material[1]['Inv'][1] = '8016.03c'
+Material[1]['Val'][0] = '2'
+Material[1]['Val'][1] = '1'
+
+Material[2]['Name'] = 'Fuel-4.4%'
+Material[2]['Den'] = '-10.5'
+Material[2]['Tmp'] = '900'
+Material[2]['Burn'] = True
+Material[2]['NNucl'] = 5
+Material[2]['Inv'][0] = '92238.09c'
+Material[2]['Inv'][1] = '92236.09c'
+Material[2]['Inv'][2] = '92235.09c'
+Material[2]['Inv'][3] = '92234.09c'
+Material[2]['Inv'][4] = '8016.09c'
+Material[2]['Val'][0] = '-0.842116'
+Material[2]['Val'][1] = '-0.000178'
+Material[2]['Val'][2] = '-0.038783'
+Material[2]['Val'][3] = '-0.000345'
+Material[2]['Val'][4] = '-0.118577'
 
 
 
@@ -205,9 +242,10 @@ class ControlPanel(wx.Panel):
         for i in range(self.maxSpinCtrl_NumPIN):
             self.PINid[i] = wx.NewId()
             self.RadioBtn_PIN_num[i] = wx.RadioButton(self, self.PINid[i], str(i+1))
-            self.RadioBtn_PIN_num[i].Bind(wx.EVT_RADIOBUTTON, self.onRadioBtn_Cliked)
+            self.RadioBtn_PIN_num[i].Bind(wx.EVT_RADIOBUTTON, self.onRadioBtnPIN_Cliked)
             self.TextCtrl_PIN_name[i] = wx.TextCtrl(self, self.PINid[i], self.PIN_type[i], (0, 0), (93, 20))
             self.TextCtrl_PIN_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_PIN_name)
+            self.TextCtrl_PIN_name[i].Bind(wx.EVT_SET_FOCUS, self.onSetFocus_PIN_name)
             self.Btn_EditPIN_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (60, 27))
             self.sizer_PIN_name[i] = wx.BoxSizer(wx.HORIZONTAL)
             self.sizer_PIN_name[i].Add(self.RadioBtn_PIN_num[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
@@ -237,6 +275,7 @@ class ControlPanel(wx.Panel):
 
         self.SetSizer(self.sizer_Main)
         self.Layout()
+
 
     def click_Btn_Open(self, event):
         Open_Dialog = wx.FileDialog(None, 'Choose a file', '', '', '*.*', wx.FD_OPEN)
@@ -308,7 +347,7 @@ class ControlPanel(wx.Panel):
         pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=[self.Selected_PIN, self.PIN_type])
         self.Layout()
 
-    def onRadioBtn_Cliked(self, event):
+    def onRadioBtnPIN_Cliked(self, event):
         for i in range(self.maxSpinCtrl_NumPIN):
             if self.RadioBtn_PIN_num[i].GetValue():
                 self.Selected_PIN = i
@@ -322,17 +361,48 @@ class ControlPanel(wx.Panel):
         #        self.PIN_type[i] = event.GetString()
         #        pub.sendMessage('CPanel PIN', arg1=self.SpinCtrl_NumPIN.GetValue(), arg2=self.PIN_type)
 
+    def onSetFocus_PIN_name(self, event):
+        i = self.PINid.index(event.GetId())
+        self.RadioBtn_PIN_num[i].SetValue(True)
+        event.Skip()
+        self.onRadioBtnPIN_Cliked(event)
+
+
 
     def click_Btn_EditMat(self, event):
-        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(730, 305), style=wx.DEFAULT_DIALOG_STYLE)
+        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(730, 304), style=wx.DEFAULT_DIALOG_STYLE)
         DialogMaterial.CenterOnScreen()
 
-        # this does not return until the dialog is closed.
-        val = DialogMaterial.ShowModal()
-        if val == wx.ID_OK:
-            print("You pressed OK need to save data")
-        else:
-            print("You pressed Cancel")
+        result = DialogMaterial.ShowModal()
+        if result == wx.ID_OK:
+            for i in range(len(TmpMaterial)):
+                if TmpMaterial[i]['Name'] != '':
+                    mName = TmpMaterial[i]['Name']
+                    Material[i]['Name'] = mName
+                    mDen = TmpMaterial[i]['Den']
+                    Material[i]['Den'] = mDen
+                    mTmp = TmpMaterial[i]['Tmp']
+                    Material[i]['Tmp'] = mTmp
+                    mBurn = TmpMaterial[i]['Burn']
+                    Material[i]['Burn'] = mBurn
+                    mNNucl = TmpMaterial[i]['NNucl']
+                    Material[i]['NNucl'] = mNNucl
+
+                    for j in range(Material[i]['NNucl']):
+                        mInv = TmpMaterial[i]['Inv'][j]
+                        Material[i]['Inv'][j] = mInv
+                    for j in range(Material[i]['NNucl']):
+                        mVal = TmpMaterial[i]['Val'][j]
+                        Material[i]['Val'][j] = mVal
+
+                #print('MAT:', Material[0]['Name'])
+                #print('TMP:', TmpMaterial[0]['Name'])
+            else:
+                pass
+                #print('MAT:', Material[0]['Name'])
+                #print('TMP:', TmpMaterial[0]['Name'])
+
+
 
         DialogMaterial.Destroy()
 
@@ -342,29 +412,64 @@ class MaterialEdit(wx.Dialog):
         wx.Dialog.__init__(self)
         self.Create(parent, id, title, pos, size, style, name)
 
-        self.MaxNumMaterials = 30
-        self.NumMaterials = 1
-        self.initMaxNucl = 8
+        self.MaxNumMaterials = max_Material
+        # self.NumMaterials = num_Materials
+        self.NumMaterials = 0
+        for j in range(len(Material)):
+            if Material[j]['Name'] != '': self.NumMaterials += 1
+
+        self.initMaxNucl = MaxNucl
+
+        for i in range(len(Material)):
+            mName = Material[i]['Name']
+            TmpMaterial[i]['Name'] = mName
+            mTmp = Material[i]['Tmp']
+            TmpMaterial[i]['Tmp'] = mTmp
+            mDen = Material[i]['Den']
+            TmpMaterial[i]['Den'] = mDen
+            mBurn = Material[i]['Burn']
+            TmpMaterial[i]['Burn'] = mBurn
+            mNNucl = Material[i]['NNucl']
+            TmpMaterial[i]['NNucl'] = mNNucl
+
+            for j in range(Material[i]['NNucl']):
+                mInv = Material[i]['Inv'][j]
+                TmpMaterial[i]['Inv'][j] = mInv
+            for j in range(Material[i]['NNucl'], self.initMaxNucl):
+                TmpMaterial[i]['Inv'][j] = ''
+
+            for j in range(Material[i]['NNucl']):
+                mVal = Material[i]['Val'][j]
+                TmpMaterial[i]['Val'][j] = mVal
+            for j in range(Material[i]['NNucl'], self.initMaxNucl):
+                TmpMaterial[i]['Val'][j] = ''
+
+        for i in range(len(Material), max_Material):
+            TmpMaterial[i]['Name'] = ''
+            TmpMaterial[i]['Tmp'] = ''
+            TmpMaterial[i]['Den'] = ''
+            TmpMaterial[i]['Burn'] = ''
+            TmpMaterial[i]['Inv'] = ''
+            TmpMaterial[i]['Val'] = ''
 
 
         MainSizer = wx.BoxSizer(wx.VERTICAL)
         GeneralMaterialSizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # Materials NAMEs sizer
-        Staticbox_MAT_names = wx.StaticBox(self, -1, label="Materials")
-        self.sizer_MAT_names = wx.StaticBoxSizer(Staticbox_MAT_names, wx.VERTICAL)
+        self.Staticbox_MAT_names = wx.StaticBox(self, -1, label="Materials")
+        self.sizer_MAT_names = wx.StaticBoxSizer(self.Staticbox_MAT_names, wx.VERTICAL)
         sizer_NumMAT = wx.BoxSizer(wx.HORIZONTAL)
 
+
         Label_NumMat = wx.StaticText(self, -1, "Number of Materials:", (0, 0), (120, 20), wx.ALIGN_LEFT)
-        SpinCtrl_NumMat = wx.SpinCtrl(self, -1, "", (0, 0), (50, 20), min=1, max=self.MaxNumMaterials, initial=self.NumMaterials)
-        # SpinCtrl_NumMat.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumMat)
+        self.SpinCtrl_NumMat = wx.SpinCtrl(self, -1, "", (0, 0), (50, 20), min=1, max=self.MaxNumMaterials, initial=self.NumMaterials)
+        self.SpinCtrl_NumMat.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumMat)
 
         sizer_NumMAT.Add(Label_NumMat, 0, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
-        sizer_NumMAT.Add(SpinCtrl_NumMat, 0, wx.ALL | wx.EXPAND, 3)
+        sizer_NumMAT.Add(self.SpinCtrl_NumMat, 0, wx.ALL | wx.EXPAND, 3)
         self.sizer_MAT_names.Add(sizer_NumMAT, 1, wx.ALL | wx.EXPAND, 0)
 
-        self.MAT_name = ['' for i in range(self.MaxNumMaterials)]
-        self.MAT_name[0] = 'Material 1'
         self.RadioBtn_MAT_num = [0 for i in range(self.MaxNumMaterials)]
         self.TextCtrl_MAT_name = [0 for i in range(self.MaxNumMaterials)]
         self.sizer_MAT_name = [0 for i in range(self.MaxNumMaterials)]
@@ -373,18 +478,18 @@ class MaterialEdit(wx.Dialog):
         for i in range(self.MaxNumMaterials):
             self.MATid[i] = wx.NewId()
             self.RadioBtn_MAT_num[i] = wx.RadioButton(self, self.MATid[i])
-            #self.RadioBtn_MAT_num[i].Bind(wx.EVT_RADIOBUTTON, self.onRadioBtn_Cliked)
-            self.TextCtrl_MAT_name[i] = wx.TextCtrl(self, self.MATid[i], self.MAT_name[i], (0, 0), (160, 20))
-            #self.TextCtrl_MAT_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_PIN_name)
+            self.RadioBtn_MAT_num[i].Bind(wx.EVT_RADIOBUTTON, self.onRadioBtnMAT_Cliked)
+            #self.TextCtrl_MAT_name[i] = wx.TextCtrl(self, self.MATid[i], Material[i]['Name'], (0, 0), (160, 20), validator=DataTransfer(data, 'Name'))
+            self.TextCtrl_MAT_name[i] = wx.TextCtrl(self, self.MATid[i], Material[i]['Name'], (0, 0), (160, 20))
+            self.TextCtrl_MAT_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_MAT_name)
+            self.TextCtrl_MAT_name[i].Bind(wx.EVT_SET_FOCUS, self.onSetFocus_MAT_name)
             self.sizer_MAT_name[i] = wx.BoxSizer(wx.HORIZONTAL)
             self.sizer_MAT_name[i].Add(self.RadioBtn_MAT_num[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
             self.sizer_MAT_name[i].Add(self.TextCtrl_MAT_name[i], 0, wx.RIGHT | wx.LEFT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
             self.sizer_MAT_names.Add(self.sizer_MAT_name[i], 0, wx.ALL | wx.EXPAND, 2)
         # Hide extra MATs
-        for i in range(SpinCtrl_NumMat.GetValue(), self.MaxNumMaterials):
+        for i in range(self.SpinCtrl_NumMat.GetValue(), self.MaxNumMaterials):
             self.sizer_MAT_names.Hide(self.sizer_MAT_name[i])
-
-        self.RadioBtn_MAT_num[0].SetValue(True)
 
 
         #Sizers MatOptions
@@ -395,20 +500,25 @@ class MaterialEdit(wx.Dialog):
 
         # Materials Name
         Label_MaterialsName = wx.StaticText(self, -1, "Materials Name:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-        TextCtrl_MaterialName = wx.TextCtrl(self, -1, self.MAT_name[0], (0, 0), (100, 20))
+        self.TextCtrl_MaterialName = wx.TextCtrl(self, -1, 'TEST', (0, 0), (100, 20), wx.TE_READONLY)
 
         # Materials Density
         Label_MaterialsDens = wx.StaticText(self, -1, "Materials Density:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-        TextCtrl_MaterialDens = wx.TextCtrl(self, -1, "", (0, 0), (100, 20))
+        self.TextCtrl_MaterialDens = wx.TextCtrl(self, -1, "", (0, 0), (100, 20))
+        self.TextCtrl_MaterialDens.Bind(wx.EVT_TEXT, self.onKeyTyped_MAT_density)
 
         # Materials Temp
         Label_MaterialsTemp = wx.StaticText(self, -1, "Materials Temperature:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-        TextCtrl_MaterialTemp = wx.TextCtrl(self, -1, "", (0, 0), (100, 20))
+        self.TextCtrl_MaterialTemp = wx.TextCtrl(self, -1, "", (0, 0), (100, 20))
+        self.TextCtrl_MaterialTemp.Bind(wx.EVT_TEXT, self.onKeyTyped_MAT_temperature)
 
         # Max Num of Nuclides
-        Label_MaxNumNucl = wx.StaticText(self, -1, "Max num of Nuclide:", (0, 0), (130, 20), wx.ALIGN_LEFT)
-        SpinCtrl_MaxNumNucl = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=99, initial=self.initMaxNucl)
-        SpinCtrl_MaxNumNucl.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_MaxNumNucl)
+        Label_Burnable = wx.StaticText(self, -1, "Burnable material:", (0, 0), (130, 20), wx.ALIGN_LEFT)
+        self.CheckBox_Burnable = wx.CheckBox(self, -1)
+        self.CheckBox_Burnable.Bind(wx.EVT_CHECKBOX, self.click_CheckBox_Burnable)
+        #self.SpinCtrl_MaxNumNucl = wx.SpinCtrl(self, -1, "", (0, 0), (100, 20), min=1, max=self.MaxNumMaterials, initial=self.initMaxNucl)
+        #self.SpinCtrl_MaxNumNucl.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_MaxNumNucl)
+
 
         flagLabel = wx.TOP | wx.DOWN | wx.ALIGN_TOP
         flagCtrl = wx.TOP | wx.DOWN | wx.ALIGN_TOP
@@ -416,14 +526,16 @@ class MaterialEdit(wx.Dialog):
         OptionsSizer.Add(Label_MaterialsName, pos=(0, 0), flag=flagLabel, border=bord)
         OptionsSizer.Add(Label_MaterialsDens, pos=(1, 0), flag=flagLabel, border=bord)
         OptionsSizer.Add(Label_MaterialsTemp, pos=(2, 0), flag=flagLabel, border=bord)
-        OptionsSizer.Add(Label_MaxNumNucl,    pos=(3, 0), flag=flagLabel, border=bord)
-        OptionsSizer.Add(TextCtrl_MaterialName, pos=(0, 1), flag=flagCtrl, border=bord)
-        OptionsSizer.Add(TextCtrl_MaterialDens, pos=(1, 1), flag=flagCtrl, border=bord)
-        OptionsSizer.Add(TextCtrl_MaterialTemp, pos=(2, 1), flag=flagCtrl, border=bord)
-        OptionsSizer.Add(SpinCtrl_MaxNumNucl,   pos=(3, 1), flag=flagCtrl, border=bord)
+        OptionsSizer.Add(Label_Burnable,    pos=(3, 0), flag=flagLabel, border=bord)
+        #OptionsSizer.Add(Label_MaxNumNucl, pos=(3, 0), flag=flagLabel, border=bord)
+        OptionsSizer.Add(self.TextCtrl_MaterialName, pos=(0, 1), flag=flagCtrl, border=bord)
+        OptionsSizer.Add(self.TextCtrl_MaterialDens, pos=(1, 1), flag=flagCtrl, border=bord)
+        OptionsSizer.Add(self.TextCtrl_MaterialTemp, pos=(2, 1), flag=flagCtrl, border=bord)
+        OptionsSizer.Add(self.CheckBox_Burnable, pos=(3, 1), flag=flagCtrl, border=bord)
+        #OptionsSizer.Add(self.SpinCtrl_MaxNumNucl,   pos=(3, 1), flag=flagCtrl, border=bord)
 
         # Nuclides Grid
-        self.grid = wx.grid.Grid(self, -1)
+        self.grid = wx.grid.Grid(self, -1, size=(242, 250))
         self.grid.CreateGrid(self.initMaxNucl, 2)
         self.grid.SetColSize(0, 100)
         self.grid.SetColSize(1, 100)
@@ -435,6 +547,10 @@ class MaterialEdit(wx.Dialog):
         self.grid.DisableDragColSize()
         self.grid.DisableDragRowSize()
         NuclideGridSizer.Add(self.grid, 0, wx.ALL, 0)
+        self.grid.SetScrollLineX(0)
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_CHANGED, self.onGrid_Cell_Changing)
+
+
 
         AllOptionsSizer.Add(OptionsSizer, 0, wx.ALL, 5)               #AllOptionsSizer
         AllOptionsSizer.Add(NuclideGridSizer, 1, wx.ALL | wx.EXPAND, 5)
@@ -443,27 +559,123 @@ class MaterialEdit(wx.Dialog):
         GeneralMaterialSizer.Add(AllOptionsSizer, 0, wx.ALL, 5)
 
         #Button OK Cancel
-        BtnSizer = wx.BoxSizer(wx.HORIZONTAL)
-        Btn_OK = wx.Button(self, -1, "OK")
-        Btn_Cancel = wx.Button(self, -1, "Cancel")
-        BtnSizer.Add(Btn_OK, 0, wx.RIGHT | wx.ALIGN_RIGHT, 5)
-        BtnSizer.Add(Btn_Cancel, 0, wx.LEFT | wx.ALIGN_RIGHT, 5)
-
+        BtnSizer = self.CreateButtonSizer(wx.OK | wx.CANCEL)
 
         MainSizer.Add(GeneralMaterialSizer, 0, wx.ALL | wx.EXPAND, 5)
         MainSizer.Add(BtnSizer, 0, wx.ALL | wx.ALIGN_RIGHT, 5)
         self.SetSizer(MainSizer)
 
+        self.SetSize(self.GetBestSize())
+
+        # Read STD or SAVEd Materials
+        self.read_std_Materials()
+
+        self.RadioBtn_MAT_num[0].SetValue(True)
+        self.openMaterialsOptions(0)
 
 
-    def click_SpinCtrl_MaxNumNucl(self, event):
-        #self.grid.InsertRows(self.initMaxNucl, 1)
-        #self.grid.SetColSize(0, 92)
-        #self.grid.SetColSize(1, 91)
-        pass
+    def read_std_Materials(self):
+        for i in range(self.NumMaterials):
+            self.TextCtrl_MAT_name[i].SetValue(Material[i]['Name'])
+
+#    def read_std_MaterialOptions(self):
+#        for i in range(self.NumMaterials):
+#            self.TextCtrl_MAT_name[i].SetText(Material[i]['Name'])
 
 
-        #self.Layout()
+    def click_SpinCtrl_NumMat(self, event):
+        self.NumMaterials = self.SpinCtrl_NumMat.GetValue()
+        for i in range(self.NumMaterials):
+            self.sizer_MAT_name[i].Show(self.RadioBtn_MAT_num[i])
+            self.sizer_MAT_name[i].Show(self.TextCtrl_MAT_name[i])
+        for i in range(self.NumMaterials,  self.MaxNumMaterials):
+            self.sizer_MAT_name[i].Hide(self.RadioBtn_MAT_num[i])
+            self.sizer_MAT_name[i].Hide(self.TextCtrl_MAT_name[i])
+            self.TextCtrl_MAT_name[i].SetValue('')
+            if self.RadioBtn_MAT_num[i].GetValue():
+                self.RadioBtn_MAT_num[0].SetValue(True)
+        for i in range(self.MaxNumMaterials):
+            if self.RadioBtn_MAT_num[i].GetValue():
+                self.Selected_MAT = i
+
+        self.SetSize(self.GetBestSize())
+        self.Layout()
+
+
+    def onSetFocus_MAT_name(self, event):
+        i = self.MATid.index(event.GetId())
+        self.RadioBtn_MAT_num[i].SetValue(True)
+        event.Skip()
+        self.openMaterialsOptions(i)
+
+    def onRadioBtnMAT_Cliked(self, event):
+        i = self.MATid.index(event.GetId())
+        self.openMaterialsOptions(i)
+        #for j in range(self.SpinCtrl_NumMat.GetValue()):
+            #if self.RadioBtn_MAT_num[j].GetValue() == True:  i = j
+
+    def openMaterialsOptions(self, id):
+        i = id
+        if TmpMaterial[i]['Name'] == '':
+            self.TextCtrl_MaterialName.SetValue('')
+            self.TextCtrl_MaterialDens.SetValue('')
+            self.TextCtrl_MaterialTemp.SetValue('')
+            self.CheckBox_Burnable.SetValue(False)
+            self.grid.ClearGrid()
+        else:
+            self.TextCtrl_MaterialName.SetValue(TmpMaterial[i]['Name'])
+            self.TextCtrl_MaterialDens.SetValue(TmpMaterial[i]['Den'])
+            self.TextCtrl_MaterialTemp.SetValue(TmpMaterial[i]['Tmp'])
+            self.CheckBox_Burnable.SetValue(TmpMaterial[i]['Burn'])
+            self.grid.ClearGrid()
+            for j in range(len(TmpMaterial[i]['Inv'])):
+                self.grid.SetCellValue(j, 0, TmpMaterial[i]['Inv'][j])
+                self.grid.SetCellValue(j, 1, TmpMaterial[i]['Val'][j])
+
+
+    def onKeyTyped_MAT_name(self, event):
+        i = self.MATid.index(event.GetId())
+        TmpMaterial[i]['Name'] = self.TextCtrl_MAT_name[i].GetValue()
+        self.TextCtrl_MaterialName.SetValue(TmpMaterial[i]['Name'])
+
+
+    def onKeyTyped_MAT_density(self, event):
+        for j in range(self.SpinCtrl_NumMat.GetValue()):
+            if self.RadioBtn_MAT_num[j].GetValue() == True:
+                i = j
+                TmpMaterial[i]['Den'] = self.TextCtrl_MaterialDens.GetValue()
+
+    def onKeyTyped_MAT_temperature(self, event):
+        for j in range(self.SpinCtrl_NumMat.GetValue()):
+            if self.RadioBtn_MAT_num[j].GetValue() == True:
+                i = j
+                TmpMaterial[i]['Tmp'] = self.TextCtrl_MaterialTemp.GetValue()
+
+    def click_CheckBox_Burnable(self, event):
+        for j in range(self.SpinCtrl_NumMat.GetValue()):
+            if self.RadioBtn_MAT_num[j].GetValue() == True:
+                i = j
+                TmpMaterial[i]['Burn'] = self.CheckBox_Burnable.GetValue()
+
+    def onGrid_Cell_Changing(self, event):
+        row = event.GetRow()
+        col = event.GetCol()
+        text = self.grid.GetCellValue(row, col)
+
+        for i in range(self.initMaxNucl):
+            if self.grid.GetCellValue(i, 0) != '':
+                NNucl = i
+        NNucl += 1
+
+
+        for j in range(self.SpinCtrl_NumMat.GetValue()):
+            if self.RadioBtn_MAT_num[j].GetValue() == True:
+                i = j
+                if col == 0:
+                    TmpMaterial[i]['Inv'][row] = text
+                else:
+                    TmpMaterial[i]['Val'][row] = text
+                TmpMaterial[i]['NNucl'] = NNucl
 
 
 class SelectObject(object):
