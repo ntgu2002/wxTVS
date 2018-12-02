@@ -85,8 +85,8 @@ MaxNucl = 30
 Material = [0 for i in range(max_Material)]
 TmpMaterial = [0 for i in range(max_Material)]
 for i in range(max_Material):
-    Material[i] = {'Name': '', 'Den': '', 'Tmp': '', 'Burn': '', 'NNucl': 0, 'Inv': ['' for i in range(MaxNucl)], 'Val': ['' for i in range(MaxNucl)]}
-    TmpMaterial[i] = {'Name': '', 'Den': '', 'Tmp': '', 'Burn': '', 'NNucl': 0, 'Inv': ['' for i in range(MaxNucl)], 'Val': ['' for i in range(MaxNucl)]}
+    Material[i] = {'Name': '', 'Den': '', 'Tmp': '', 'Burn': False, 'NNucl': 0, 'Inv': ['' for i in range(MaxNucl)], 'Val': ['' for i in range(MaxNucl)]}
+    TmpMaterial[i] = {'Name': '', 'Den': '', 'Tmp': '', 'Burn': False, 'NNucl': 0, 'Inv': ['' for i in range(MaxNucl)], 'Val': ['' for i in range(MaxNucl)]}
 
 Material[0]['Name'] = 'ZrNb_clad'
 Material[0]['Den'] = '-6.55'
@@ -246,7 +246,8 @@ class ControlPanel(wx.Panel):
             self.TextCtrl_PIN_name[i] = wx.TextCtrl(self, self.PINid[i], self.PIN_type[i], (0, 0), (93, 20))
             self.TextCtrl_PIN_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_PIN_name)
             self.TextCtrl_PIN_name[i].Bind(wx.EVT_SET_FOCUS, self.onSetFocus_PIN_name)
-            self.Btn_EditPIN_name[i] = wx.Button(self, -1, "Edit..", (0, 0), (60, 27))
+            self.Btn_EditPIN_name[i] = wx.Button(self, self.PINid[i], "Edit", (0, 0), (60, 27))
+            self.Btn_EditPIN_name[i].Bind(wx.EVT_BUTTON, self.click_Btn_EditPIN)
             self.sizer_PIN_name[i] = wx.BoxSizer(wx.HORIZONTAL)
             self.sizer_PIN_name[i].Add(self.RadioBtn_PIN_num[i], 0, wx.RIGHT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
             self.sizer_PIN_name[i].Add(self.TextCtrl_PIN_name[i], 0, wx.RIGHT | wx.LEFT | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 0)
@@ -289,6 +290,7 @@ class ControlPanel(wx.Panel):
             if dlg.ShowModal() == wx.ID_OK:
                 print(dlg.GetPath())
                 with open(dlg.GetPath(), 'w') as file:
+                    # SAVE AZ MAP
                     for i in range(AZ_dimension):
                         for j in range(AZ_dimension):
                             if map_type[i][j] == '-': saveTVStype = '------'
@@ -297,12 +299,25 @@ class ControlPanel(wx.Panel):
                         file.writelines('\n')
                     file.writelines('\n')
 
+                    # SAVE TVSs MAP
                     for k in range(self.SpinCtrl_NumTVS.GetValue()):
                         for i in range(TVS_dimension):
                             for j in range(TVS_dimension):
                                 file.write(map_PIN_type[k][i][j])
                             file.writelines('\n')
                         file.writelines('\n')
+
+                    # SAVE Materials Data
+                    for i in range(max_Material):
+                        if Material[i]['Name'] != '':
+                            file.write('mat ' + Material[i]['Name'] + '\t' + Material[i]['Den'] + '\t' + 'tmp ' + Material[i]['Tmp'])
+                            if Material[i]['Burn'] == True: file.write('\tburn 1')
+                            file.write('\n')
+                            for j in range(MaxNucl):
+                                if Material[i]['Inv'][j] != '':
+                                    file.write(Material[i]['Inv'][j] + '\t' + Material[i]['Val'][j] + '\n')
+                            file.writelines('\n')
+
 
     def click_CheckBox_Sym(self, event):
         pub.sendMessage('CPanel Symmetry', arg1=self.CheckBox_Symmetry.GetValue())
@@ -368,9 +383,17 @@ class ControlPanel(wx.Panel):
         self.onRadioBtnPIN_Cliked(event)
 
 
+    def click_Btn_EditPIN(self, event):
+        DialogPIN = PINsEdit(None)
+        DialogPIN.CenterOnScreen()
+        result = DialogPIN.ShowModal()
+        if result == wx.ID_OK:
+            print('OK -> close')
+        DialogPIN.Destroy()
+
 
     def click_Btn_EditMat(self, event):
-        DialogMaterial = MaterialEdit(self, -1, "Sample Dialog", size=(730, 304), style=wx.DEFAULT_DIALOG_STYLE)
+        DialogMaterial = MaterialEdit(None)
         DialogMaterial.CenterOnScreen()
 
         result = DialogMaterial.ShowModal()
@@ -394,32 +417,96 @@ class ControlPanel(wx.Panel):
                     for j in range(Material[i]['NNucl']):
                         mVal = TmpMaterial[i]['Val'][j]
                         Material[i]['Val'][j] = mVal
-
-                #print('MAT:', Material[0]['Name'])
-                #print('TMP:', TmpMaterial[0]['Name'])
-            else:
-                pass
-                #print('MAT:', Material[0]['Name'])
-                #print('TMP:', TmpMaterial[0]['Name'])
-
-
-
         DialogMaterial.Destroy()
+
+class PINsEdit(wx.Dialog):
+    def __init__(self, parent):
+        wx.Dialog.__init__(self, parent, -1, title='Material Edit', size=(730, 304), style=wx.DEFAULT_DIALOG_STYLE)
+
+        self.initNumCell = 5
+        self.maxNumCell = 30
+
+        sizer_Main = wx.BoxSizer(wx.VERTICAL)
+        sizer_NumCell = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_Label = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer_GeneralCell = wx.BoxSizer(wx.VERTICAL)
+        sizer_Color = wx.BoxSizer(wx.HORIZONTAL)
+
+        label_NumCell = wx.StaticText(self, -1, "Number of Cells:", (0, 0), (90, 20), wx.ALIGN_LEFT)
+        self.spinCtrl_NumCell = wx.SpinCtrl(self, -1, "", (0, 0), (90, 20), min=1, max=self.maxNumCell, initial=self.initNumCell)
+        self.spinCtrl_NumCell.Bind(wx.EVT_SPINCTRL, self.click_SpinCtrl_NumCell)
+
+        label_Material = wx.StaticText(self, -1, "Material:", (0, 0), (90, 20), wx.ALIGN_LEFT)
+        label_Radius = wx.StaticText(self, -1, "Radius:", (0, 0), (90, 20), wx.ALIGN_LEFT)
+
+
+        self.textCtrl_Material = [0 for i in range(self.maxNumCell)]
+        self.textCtrl_Radius = [0 for i in range(self.maxNumCell)]
+        self.sizer_Cell = [0 for i in range(self.maxNumCell)]
+
+        for i in range(self.maxNumCell):
+            self.textCtrl_Material[i] = wx.TextCtrl(self, -1, 'tmp', (0, 0), (90, 20))
+            self.textCtrl_Radius[i] = wx.TextCtrl(self, -1, 'tmp', (0, 0), (90, 20))
+            #self.TextCtrl_MAT_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_MAT_name)
+            self.sizer_Cell[i] = wx.BoxSizer(wx.HORIZONTAL)
+            self.sizer_Cell[i].Add(self.textCtrl_Material[i], 0, wx.RIGHT | wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+            self.sizer_Cell[i].Add(self.textCtrl_Radius[i], 0, wx.RIGHT | wx.LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+            self.sizer_GeneralCell.Add(self.sizer_Cell[i], 0, wx.ALL | wx.EXPAND, 2)
+        # Hide extra Cells
+        for i in range(self.spinCtrl_NumCell.GetValue(), self.maxNumCell):
+            self.sizer_GeneralCell.Hide(self.sizer_Cell[i])
+
+        label_PinColor = wx.StaticText(self, -1, "PIN Color:", (0, 0), (90, 20), wx.ALIGN_LEFT)
+        btn_PinColor = wx.Button(self, -1, "Color", (0, 0), (90, 20))
+
+
+
+        sizer_NumCell.Add(label_NumCell, 0, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+        sizer_NumCell.Add(self.spinCtrl_NumCell, 0, wx.ALL, 3)
+        sizer_Label.Add(label_Material, 0, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+        sizer_Label.Add(label_Radius, 0, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+        sizer_Color.Add(label_PinColor, 0, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+        sizer_Color.Add(btn_PinColor, 0, wx.ALL | wx.ALIGN_LEFT | wx.ALIGN_CENTER_VERTICAL, 3)
+
+        sizer_Main.Add(sizer_NumCell, 0, wx.ALL, 0)
+        sizer_Main.Add(sizer_Label, 0, wx.ALL, 0)
+        sizer_Main.Add(self.sizer_GeneralCell, 0, wx.ALL, 0)
+        sizer_Main.Add(sizer_Color, 0, wx.ALL, 0)
+
+        self.SetSizer(sizer_Main)
+        self.SetSize(self.GetBestSize())
+
+
+
+    def click_SpinCtrl_NumCell(self, event):
+        self.NumCell = self.spinCtrl_NumCell.GetValue()
+        for i in range(self.NumCell):
+            self.sizer_Cell[i].Show(self.textCtrl_Material[i])
+            self.sizer_Cell[i].Show(self.textCtrl_Radius[i])
+        for i in range(self.NumCell,  self.maxNumCell):
+            self.sizer_Cell[i].Hide(self.textCtrl_Material[i])
+            self.sizer_Cell[i].Hide(self.textCtrl_Radius[i])
+            self.textCtrl_Material[i].SetValue('')
+            self.textCtrl_Radius[i].SetValue('')
+
+        self.SetSize(self.GetBestSize())
+        self.Layout()
+
+
 
 
 class MaterialEdit(wx.Dialog):
-    def __init__(self, parent, id, title, size=wx.DefaultSize, pos=wx.DefaultPosition, style=wx.DEFAULT_DIALOG_STYLE, name='dialog'):
-        wx.Dialog.__init__(self)
-        self.Create(parent, id, title, pos, size, style, name)
+    def __init__(self, parent):
+        wx.Dialog.__init__(self, parent, -1, title='Material Edit', size=(730, 304), style=wx.DEFAULT_DIALOG_STYLE)
+        #self.Create(parent, id, title, pos, size, style, name)
 
         self.MaxNumMaterials = max_Material
-        # self.NumMaterials = num_Materials
         self.NumMaterials = 0
         for j in range(len(Material)):
             if Material[j]['Name'] != '': self.NumMaterials += 1
-
         self.initMaxNucl = MaxNucl
 
+        # READ Materials in TmpMaterials
         for i in range(len(Material)):
             mName = Material[i]['Name']
             TmpMaterial[i]['Name'] = mName
@@ -479,7 +566,6 @@ class MaterialEdit(wx.Dialog):
             self.MATid[i] = wx.NewId()
             self.RadioBtn_MAT_num[i] = wx.RadioButton(self, self.MATid[i])
             self.RadioBtn_MAT_num[i].Bind(wx.EVT_RADIOBUTTON, self.onRadioBtnMAT_Cliked)
-            #self.TextCtrl_MAT_name[i] = wx.TextCtrl(self, self.MATid[i], Material[i]['Name'], (0, 0), (160, 20), validator=DataTransfer(data, 'Name'))
             self.TextCtrl_MAT_name[i] = wx.TextCtrl(self, self.MATid[i], Material[i]['Name'], (0, 0), (160, 20))
             self.TextCtrl_MAT_name[i].Bind(wx.EVT_TEXT, self.onKeyTyped_MAT_name)
             self.TextCtrl_MAT_name[i].Bind(wx.EVT_SET_FOCUS, self.onSetFocus_MAT_name)
@@ -548,7 +634,8 @@ class MaterialEdit(wx.Dialog):
         self.grid.DisableDragRowSize()
         NuclideGridSizer.Add(self.grid, 0, wx.ALL, 0)
         self.grid.SetScrollLineX(0)
-        self.grid.Bind(wx.grid.EVT_GRID_CELL_CHANGED, self.onGrid_Cell_Changing)
+        self.grid.Bind(wx.grid.EVT_GRID_CELL_CHANGED, self.onGrid_Cell_Changed)
+        self.grid.Bind(wx.EVT_KEY_DOWN, self.OnKey_Grid)
 
 
 
@@ -571,6 +658,7 @@ class MaterialEdit(wx.Dialog):
         self.read_std_Materials()
 
         self.RadioBtn_MAT_num[0].SetValue(True)
+        self.CurrentMat = 0
         self.openMaterialsOptions(0)
 
 
@@ -603,14 +691,16 @@ class MaterialEdit(wx.Dialog):
 
 
     def onSetFocus_MAT_name(self, event):
-        i = self.MATid.index(event.GetId())
-        self.RadioBtn_MAT_num[i].SetValue(True)
+        self.CurrentMat = self.MATid.index(event.GetId())
+        self.RadioBtn_MAT_num[self.CurrentMat].SetValue(True)
         event.Skip()
-        self.openMaterialsOptions(i)
+        self.openMaterialsOptions(self.CurrentMat)
+
 
     def onRadioBtnMAT_Cliked(self, event):
-        i = self.MATid.index(event.GetId())
-        self.openMaterialsOptions(i)
+        self.CurrentMat = self.MATid.index(event.GetId())
+        self.openMaterialsOptions(self.CurrentMat)
+
         #for j in range(self.SpinCtrl_NumMat.GetValue()):
             #if self.RadioBtn_MAT_num[j].GetValue() == True:  i = j
 
@@ -657,7 +747,7 @@ class MaterialEdit(wx.Dialog):
                 i = j
                 TmpMaterial[i]['Burn'] = self.CheckBox_Burnable.GetValue()
 
-    def onGrid_Cell_Changing(self, event):
+    def onGrid_Cell_Changed(self, event):
         row = event.GetRow()
         col = event.GetCol()
         text = self.grid.GetCellValue(row, col)
@@ -668,255 +758,101 @@ class MaterialEdit(wx.Dialog):
         NNucl += 1
 
 
+        #for j in range(self.SpinCtrl_NumMat.GetValue()):
+            #if self.RadioBtn_MAT_num[j].GetValue() == True:
+                #i = j
+        if col == 0:
+            TmpMaterial[self.CurrentMat]['Inv'][row] = text
+        else:
+            TmpMaterial[self.CurrentMat]['Val'][row] = text
+        TmpMaterial[self.CurrentMat]['NNucl'] = NNucl
+
+    def OnKey_Grid(self, event):
+
+        print('hi')
+
+        # Get start cell and number of copy rows/cols
+        if self.grid.IsSelection():
+            self.rowstart = self.grid.GetSelectionBlockTopLeft()[0][0]
+            self.colstart = self.grid.GetSelectionBlockTopLeft()[0][1]
+            self.rowend = self.grid.GetSelectionBlockBottomRight()[0][0]
+            self.colend = self.grid.GetSelectionBlockBottomRight()[0][1]
+        else:
+            self.rowstart = self.grid.GetGridCursorRow()
+            self.colstart = self.grid.GetGridCursorCol()
+            self.rowend = self.rowstart
+            self.colend = self.colstart
+        self.rows = self.rowend - self.rowstart + 1
+        self.cols = self.colend - self.colstart + 1
+
+        # If Ctrl+c is pressed...
+        if event.ControlDown() and event.GetKeyCode() == 67:
+            self.copy()
+        # If Ctrl+v is pressed...
+        if event.ControlDown() and event.GetKeyCode() == 86:
+            self.paste()
+        # If del, backspace or Ctrl+x is pressed...
+        if event.GetKeyCode() == 127 or event.GetKeyCode() == 8:
+            self.delete()
+        # Skip other Key events
+        if event.GetKeyCode():
+            event.Skip()
+            #return
+
+        # SAVE All Nuclides like in onGrid_Cell_Changing ut ALL reSave
         for j in range(self.SpinCtrl_NumMat.GetValue()):
             if self.RadioBtn_MAT_num[j].GetValue() == True:
-                i = j
-                if col == 0:
-                    TmpMaterial[i]['Inv'][row] = text
-                else:
-                    TmpMaterial[i]['Val'][row] = text
-                TmpMaterial[i]['NNucl'] = NNucl
+                nMat = j
+
+        for i in range(self.initMaxNucl):
+            TmpMaterial[nMat]['Inv'][i] = self.grid.GetCellValue(i, 0)
+            TmpMaterial[nMat]['Val'][i] = self.grid.GetCellValue(i, 1)
+            if self.grid.GetCellValue(i, 0) != '':
+                NNucl = i
+        NNucl += 1
+        TmpMaterial[self.CurrentMat]['NNucl'] = NNucl
 
 
-class SelectObject(object):
-    def __init__(self, btn, clickXY, NumTVS):
-        self.SelectedTVS = [0, 0]
-        self.button = btn
-        self.NumTVS = NumTVS
-        #print('SELECT', self.NumTVS)
-        clickX = clickXY[0]
-        clickY = clickXY[1]
-        cL = [0 for i in range(6)]
-        points = PaintTVS(TVS_SIZE).returnPoints()
+    def copy(self):
+        data = ''
 
-        dRow = 0
-        for row in map_year:
-            dCol = 0
-            for col in row:
-                for i in range(6):
-                    if i == 5:
-                        cL[i] = (points[dRow][dCol][i][0]-clickX)*(points[dRow][dCol][0][1]-points[dRow][dCol][i][1])-\
-                                (points[dRow][dCol][0][0]-points[dRow][dCol][i][0])*(points[dRow][dCol][i][1]-clickY)
-                    else:
-                        cL[i] = (points[dRow][dCol][i][0]-clickX)*(points[dRow][dCol][i+1][1]-points[dRow][dCol][i][1])-\
-                                (points[dRow][dCol][i+1][0]-points[dRow][dCol][i][0])*(points[dRow][dCol][i][1]-clickY)
-                if cL[0] < 0 and cL[1] < 0 and cL[2] < 0 and cL[3] < 0 and cL[4] < 0 and cL[5] < 0:
-                    self.SelectedTVS = [dRow, dCol]
-                dCol += 1
-            dRow += 1
+        # For each cell in selected range append the cell value
+        # in the data variable Tabs '\t' for cols and '\n' for rows
+        for r in range(self.rows):
+            for c in range(self.cols):
+                data += str(self.grid.GetCellValue(self.rowstart + r, self.colstart + c))
+                if c < self.cols - 1:
+                    data += '\t'
+            data += '\n'
 
+        # Create text data object
+        clipboard = wx.TextDataObject()
 
-    def fTVS_pos(self):
-        if self.SelectedTVS != [0, 0]:
-            return self.SelectedTVS
+        # Set data object value
+        clipboard.SetText(data)
 
-    def fTVS_symetry(self):
-        Cn = int(AZ_dimension/2)
-        Sym = [0 for i in range(29)]
-        k=0
-        Sym[0] = [Cn, Cn], [Cn, Cn]
-        for j in range(Cn-1):
-            for i in range(1, Cn-j):
-                k+=1
-                Sym[k] = [Cn+j, Cn-j-i], [Cn-j, Cn+j+i], [Cn-i, Cn-j], [Cn+i, Cn+j],  [Cn-j-i, Cn+i], [Cn+j+i, Cn-i]
-        return Sym
+        # Put the data in the clipboard
+        wx.TheClipboard.Open()
+        wx.TheClipboard.SetData(clipboard)
+        wx.TheClipboard.Close()
 
+    def paste(self):
+        clipboard = wx.TextDataObject()
+        wx.TheClipboard.Open()
+        wx.TheClipboard.GetData(clipboard)
+        wx.TheClipboard.Close()
+        data = clipboard.GetText()
 
-    def fTVS_change(self, *args, **kwargs):
-        dRow = self.SelectedTVS[0]
-        dCol = self.SelectedTVS[1]
-        TVS_index = [dRow, dCol]
-        Cn = int(AZ_dimension / 2)
+        for y, string in enumerate(data.splitlines()):
+            for x, word in enumerate(string.split('\t')):
+                if(self.rowstart+y <= 30 and self.colstart+x <= 1):
+                    self.grid.SetCellValue(self.rowstart+y, self.colstart+x, word)
 
-        if self.SelectedTVS != [0, 0]:  # test if click on somewhere but no on TVS
-            Sym = self.fTVS_symetry()    # call fTVS_symetry function
-            for i in range(len(Sym)):   # walk by all Sym koeff list
-                if TVS_index in Sym[i]:         # looking up Symetry
-                    for SymIndex in Sym[i]:     # get indexes of all symetry TVS from list
-                        dRow = SymIndex[0]
-                        dCol = SymIndex[1]
-
-                        # Modification MAP_YEAR
-                        if self.button == 'left':
-                            if map_year[dRow][dCol] == '1':
-                                map_year[dRow] = map_year[dRow][:dCol] + '2' + map_year[dRow][(dCol + 1):]
-                            elif map_year[dRow][dCol] == '2':
-                                map_year[dRow] = map_year[dRow][:dCol] + '3' + map_year[dRow][(dCol + 1):]
-                            elif map_year[dRow][dCol] == '3':
-                                map_year[dRow] = map_year[dRow][:dCol] + '1' + map_year[dRow][(dCol + 1):]
-
-                        # Modification MAP_TYPE
-                        elif self.button == 'right':
-                            if map_type[dRow][dCol] == '1':
-                                if self.NumTVS > 1: map_type[dRow] = map_type[dRow][:dCol] + '2' + map_type[dRow][(dCol + 1):]
-                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
-                            elif map_type[dRow][dCol] == '2':
-                                if self.NumTVS > 2: map_type[dRow] = map_type[dRow][:dCol] + '3' + map_type[dRow][(dCol + 1):]
-                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
-                            elif map_type[dRow][dCol] == '3':
-                                if self.NumTVS > 3: map_type[dRow] = map_type[dRow][:dCol] + '4' + map_type[dRow][(dCol + 1):]
-                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
-                            elif map_type[dRow][dCol] == '4':
-                                if self.NumTVS > 4: map_type[dRow] = map_type[dRow][:dCol] + '5' + map_type[dRow][(dCol + 1):]
-                                else:               map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
-                            elif map_type[dRow][dCol] == '5':
-                                map_type[dRow] = map_type[dRow][:dCol] + '1' + map_type[dRow][(dCol + 1):]
-
-        self.button = ''
-
-class PaintTVS(object):
-    def __init__(self, radius):
-        TVS_r = radius
-        self.TVS_r = radius
-        TVS_R = 2 * TVS_r / math.sqrt(3)
-        offset = 8 * TVS_r
-        dx = 0 - offset
-        dy = TVS_R
-        self.pointsTVS = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-        self.txtYearX = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-        self.txtYearY = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-        self.txtTypeX = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-        self.txtTypeY = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-        # AZ map_year
-
-        dRow = 0
-        for row in map_year:
-            dCol = 0
-            for col in row:
-                self.pointsTVS[dRow][dCol] = [(dx + TVS_r, dy + TVS_R / 2), (dx + TVS_r, dy - TVS_R / 2), (dx + 0, dy - TVS_R),
-                                              (dx - TVS_r, dy - TVS_R / 2), (dx - TVS_r, dy + TVS_R / 2), (dx + 0, dy + TVS_R)]
-                self.txtYearX[dRow][dCol] = dx - TVS_r + TVS_r/5
-                self.txtYearY[dRow][dCol] = dy - TVS_R/2 - TVS_R/15
-                self.txtTypeX[dRow][dCol] = dx - TVS_r + TVS_r/3.3
-                self.txtTypeY[dRow][dCol] = dy-5
-                dx += TVS_r * 2
-                dCol += 1
-            dRow += 1
-            dy += TVS_R * 2 - TVS_R / 2
-            dx = TVS_r * dRow - offset
-
-
-    def returnPoints(self):
-        return self.pointsTVS
-
-    def render(self, gc, T_type):
-        self.TVS_type = [0 for i in range(max_NumTVS)]
-        self.TVS_type = T_type
-        path = [[0 for i in range(AZ_dimension)] for j in range(AZ_dimension)]
-
-        # Change TVS year by color and text
-        dRow = 0
-        for row in map_year:
-            dCol = 0
-            for col in row:
-                # Draw TVS
-                if col == '1':
-                    gc.SetPen(wx.Pen('navy', 1))
-                    gc.SetBrush(wx.Brush(wx.Colour(185, 225, 185)))
-                elif col == '2':
-                    gc.SetPen(wx.Pen('navy', 1))
-                    gc.SetBrush(wx.Brush(wx.Colour(225, 225, 120)))
-                elif col == '3':
-                    gc.SetPen(wx.Pen('navy', 1))
-                    gc.SetBrush(wx.Brush(wx.Colour(250, 180, 255)))
-                else:
-                    gc.SetPen(wx.Pen('navy', 1, wx.PENSTYLE_TRANSPARENT))
-                    gc.SetBrush(wx.Brush(wx.Colour(255, 255, 255, 0)))
-
-                path[dRow][dCol] = gc.CreatePath()
-                for i in range(6):
-                    path[dRow][dCol].AddLineToPoint(self.pointsTVS[dRow][dCol][i])
-                path[dRow][dCol].CloseSubpath()
-                gc.DrawPath(path[dRow][dCol])
-
-                # Draw Text - Year
-                gc.SetFont(wx.Font(wx.FontInfo(9).Bold()), 'navy')
-                if col == '1':
-                    gc.DrawText('1', self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
-                elif col == '2':
-                    gc.DrawText('2', self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
-                elif col == '3':
-                    gc.DrawText('3', self.txtYearX[dRow][dCol], self.txtYearY[dRow][dCol])
-
-                dCol += 1
-            dRow += 1
-
-        # Change TVS type text
-        dRow = 0
-        for row in map_type:
-            dCol = 0
-            for col in row:
-                # Draw Text - Type
-                FontType = wx.Font(wx.FontInfo(9).Bold())
-                gc.SetFont(FontType, 'navy')
-                if col == '1':
-                    gc.DrawText(self.TVS_type[0], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
-                elif col == '2':
-                    gc.DrawText(self.TVS_type[1], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
-                elif col == '3':
-                    gc.DrawText(self.TVS_type[2], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
-                elif col == '4':
-                    gc.DrawText(self.TVS_type[3], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
-                elif col == '5':
-                    gc.DrawText(self.TVS_type[4], self.txtTypeX[dRow][dCol], self.txtTypeY[dRow][dCol])
-                dCol += 1
-            dRow += 1
-
-class OLD_AZonePanel(wx.Panel):
-    def __init__(self, parent, NumTVS, TVS_type):
-        wx.Panel.__init__(self, parent)
-        self.SetBackgroundColour('WHITE')
-        self.NumTVS = NumTVS
-        self.TVS_type = TVS_type
-
-        # Events by Paint, LeftMouseClick, ..
-        self.Bind(wx.EVT_PAINT, self.onPaint)
-        self.Bind(wx.EVT_LEFT_DOWN, self.onClick_Lbtn)
-        self.Bind(wx.EVT_RIGHT_DOWN, self.onClick_Rbtn)
-        # Pub Sub method getting values from Control Panel
-        pub.subscribe(self.listenerCPanelTVS, 'CPanel TVS')
-
-    def listenerCPanelTVS(self, arg1, arg2=None):
-        self.NumTVS = arg1
-        if arg2:
-            self.TVS_type = arg2
-            #for i in range(len(arg2)):
-                #print(self.TVS_type[i])
-            self.initBufferAZ()
-
-    def initBufferAZ(self):
-        # Create Buffer Bitmap
-        w, h = self.GetClientSize()
-        self.Buffer = wx.Bitmap(w, h)
-        # Create BufferedDC
-        dc = wx.BufferedDC(wx.ClientDC(self), self.Buffer)
-        dc.Clear()
-        # Create GraphicsContext
-        gc = wx.GraphicsContext.Create(dc)
-        # Painting in GraphicsContext
-        PaintTVS(TVS_SIZE).render(gc, self.TVS_type)
-
-    def onPaint(self, evt):
-        # Painting through Buffer
-        self.initBufferAZ()
-
-    def onClick_Lbtn(self, evt):
-        # Define Click position
-        clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
-        print('TVS number:', SelectObject('left', clickXY, self.NumTVS).fTVS_pos(), 'was selected')
-        # Define clicked TVS
-        SelectObject('left', clickXY, self.NumTVS).fTVS_change()
-        # Painting through Buffer
-        self.initBufferAZ()
-
-    def onClick_Rbtn(self, evt):
-        # Define Click position
-        clickXY = [evt.GetPosition()[0], evt.GetPosition()[1]]
-        print('TVS number:', SelectObject('right', clickXY, self.NumTVS).fTVS_pos(), 'was selected')
-        # Define clicked TVS
-        SelectObject('right', clickXY, self.NumTVS).fTVS_change()
-        # Painting through Buffer
-        self.initBufferAZ()
+    def delete(self):
+        # Clear cells contents
+        for r in range(self.rows):
+            for c in range(self.cols):
+                self.grid.SetCellValue(self.rowstart + r, self.colstart + c, '')
 
 
 class AZonePanel(wx.Panel):
